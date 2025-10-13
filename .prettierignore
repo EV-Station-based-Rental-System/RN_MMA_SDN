@@ -1,0 +1,17 @@
+node_modules
+.expo
+android
+ios
+dist
+build
+coverage
+.temp
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.webp
+**/*.svg
+**/*.ico
+**/*.lock
+package-lock.json
