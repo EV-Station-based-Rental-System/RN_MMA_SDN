@@ -4,12 +4,18 @@
  */
 
 import ApiClient from '@/src/services/api.client';
+import type {
+  CreateBookingDto,
+  Booking,
+  BookingQueryParams,
+  CreateBookingResponse,
+} from '@/src/types/api.types';
 
 class BookingService {
   /**
-   * createBooking
+   * createBooking - Creates a new booking and returns payment URL
    */
-  async createBooking(data: any): Promise<any> {
+  async createBooking(data: CreateBookingDto): Promise<CreateBookingResponse> {
     try {
       return await ApiClient.post(`/bookings`, data);
     } catch (error) {
@@ -21,7 +27,7 @@ class BookingService {
   /**
    * getAllBookings
    */
-  async getAllBookings(params?: any): Promise<any> {
+  async getAllBookings(params?: BookingQueryParams): Promise<any> {
     try {
       return await ApiClient.get(`/bookings`, { params });
     } catch (error) {
@@ -43,9 +49,9 @@ class BookingService {
   }
 
   /**
-   * getBookingsByRenter
+   * getBookingsByRenter - Get booking history for logged-in renter
    */
-  async getBookingsByRenter(params?: any): Promise<any> {
+  async getBookingsByRenter(params?: BookingQueryParams): Promise<{ data: Booking[] }> {
     try {
       return await ApiClient.get(`/bookings/history-renter`, { params });
     } catch (error) {
@@ -55,9 +61,9 @@ class BookingService {
   }
 
   /**
-   * getBookingById
+   * getBookingById - Get booking details by ID
    */
-  async getBookingById(id: string): Promise<any> {
+  async getBookingById(id: string): Promise<{ data: Booking }> {
     try {
       return await ApiClient.get(`/bookings/${id}`);
     } catch (error) {
@@ -67,37 +73,13 @@ class BookingService {
   }
 
   /**
-   * cancelBooking
+   * cancelBooking - Cancel a booking
    */
   async cancelBooking(id: string): Promise<any> {
     try {
-      return await ApiClient.patch(`/bookings/cancel/${id}`, data);
+      return await ApiClient.patch(`/bookings/cancel/${id}`);
     } catch (error) {
       console.error('cancelBooking error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * getMonthlyRevenue
-   */
-  async getMonthlyRevenue(params?: any): Promise<any> {
-    try {
-      return await ApiClient.get(`/bookings/statistics/monthly-revenue`, { params });
-    } catch (error) {
-      console.error('getMonthlyRevenue error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * getBookingStatistics
-   */
-  async getBookingStatistics(params?: any): Promise<any> {
-    try {
-      return await ApiClient.get(`/bookings/statistics/booking-count`, { params });
-    } catch (error) {
-      console.error('getBookingStatistics error:', error);
       throw error;
     }
   }

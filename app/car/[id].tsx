@@ -36,14 +36,10 @@ export default function CarDetailsScreen() {
     try {
       setLoading(true);
       setError(null);
-<<<<<<< HEAD
       console.log('Loading vehicle details for ID:', vehicleId);
       console.log('API endpoint will be:', `/vehicle/${vehicleId}`);
       const data = await VehicleService.findOne(vehicleId);
       console.log('Vehicle details loaded:', data);
-=======
-      const data = await VehicleService.getVehicleById(vehicleId);
->>>>>>> origin/main
       setVehicle(data as VehicleWithId);
     } catch (err: any) {
       console.error('Load vehicle details error:', err);

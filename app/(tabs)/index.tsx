@@ -64,10 +64,21 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       setError(null);
-      const response = await VehicleService.findAll({ page: 1, take: 10, is_active: true });
+      // Request active vehicles with available status from backend
+      const response = await VehicleService.findAll({ page: 1, take: 50, is_active: true, status: 'available' });
       console.log('Vehicles response:', JSON.stringify(response, null, 2));
-      console.log('First vehicle:', response.data?.[0]);
-      setVehicles((response.data || []) as VehicleWithId[]);
+
+      // Ensure we only surface vehicles that are active and available (safety-net filter)
+      const rawData = (response.data || []) as any[];
+      const filtered = rawData.filter((v) => {
+        const isActive = v?.is_active === true || v?.isActive === true;
+        const status = (v?.status || v?.state || '').toString().toLowerCase();
+        const isAvailable = status === 'available';
+        return isActive && isAvailable;
+      });
+
+      console.log('Filtered vehicles (active & available):', filtered.length);
+      setVehicles(filtered as VehicleWithId[]);
     } catch (err) {
       console.error('Load vehicles error:', err);
       setError('Failed to load vehicles. Please try again.');

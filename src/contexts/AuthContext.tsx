@@ -93,11 +93,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log('🔄 Refreshing user data for ID:', userId);
       
-      const userData = await UserService.findOne(userId);
-      console.log('✅ User data refreshed:', userData);
+      // UserService.findOne returns an Axios response; extract .data which is the actual user object
+      const userResponse = await UserService.findOne(userId);
+      const userData = userResponse?.data ?? userResponse;
+      console.log('✅ User data refreshed (raw response):', userResponse);
+      console.log('✅ User data refreshed (extracted):', userData);
       console.log('🆔 User ID from API response:', userData?._id || userData?.id);
       console.log('🔍 Current userId in context:', userId);
-      
+
       // Check if user ID from API matches current userId
       const apiUserId = userData?._id || userData?.id;
       if (apiUserId && apiUserId !== userId) {
@@ -105,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('   JWT userId:', userId);
         console.log('   API userId:', apiUserId);
       }
-      
+
       // Save refreshed user data to storage
       console.log('💾 Saving refreshed user data to storage...');
       try {
@@ -114,8 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (storageError) {
         console.error('❌ Failed to save refreshed user data to storage:', storageError);
       }
-      
-      setUser(userData);
+
+      // Update in-memory user to the extracted user object
+      setUser(userData as any);
       console.log('✅ User data refreshed and saved to storage');
     } catch (error: any) {
       console.error('❌ Refresh user error:', error);

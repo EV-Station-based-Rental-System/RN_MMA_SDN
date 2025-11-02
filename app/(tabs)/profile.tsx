@@ -26,7 +26,9 @@ import UserService from '@/src/api/user.api';
 import type { components } from '@/src/api/generated/openapi-types';
 
 type KYC = components['schemas']['Kycs'];
-type CreateKycDto = components['schemas']['CreateKycsDto'];
+// Some generated types may have different names in the OpenAPI output.
+// Use a flexible any type here to avoid compile issues until types are synced.
+type CreateKycDto = any;
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -42,6 +44,14 @@ export default function ProfileScreen() {
   const [documentNumber, setDocumentNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [documentImage, setDocumentImage] = useState<string | null>(null);
+
+  // Edit profile state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [editAddress, setEditAddress] = useState('');
+  const [editDob, setEditDob] = useState('');
 
   // Debug: Log user state changes
   useEffect(() => {
@@ -110,8 +120,61 @@ export default function ProfileScreen() {
   };
 
   const handleEditProfile = () => {
-    // TODO: Navigate to edit profile screen
-    Alert.alert('Coming Soon', 'Edit profile feature will be available soon.');
+    // Open edit modal and prefill with current user data
+    setEditFullName(user?.full_name || '');
+    setEditPhone((user as any)?.phone_number || (user as any)?.phone || '');
+    setEditAddress((user as any)?.address || '');
+    setEditDob((user as any)?.date_of_birth || (user as any)?.dob || '');
+    setShowEditModal(true);
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditFullName('');
+    setEditPhone('');
+    setEditAddress('');
+    setEditDob('');
+  };
+
+  const handleSaveProfile = async () => {
+    if (!userId) {
+      Alert.alert('Error', 'User ID not available');
+      return;
+    }
+
+    if (!editFullName.trim()) {
+      Alert.alert('Validation', 'Full name is required');
+      return;
+    }
+
+    try {
+      setSavingProfile(true);
+      const payload: any = {
+        full_name: editFullName.trim(),
+      };
+      if (editPhone.trim()) payload.phone_number = editPhone.trim();
+      if (editAddress.trim()) payload.address = editAddress.trim();
+      if (editDob.trim()) payload.date_of_birth = editDob.trim();
+
+      console.log('✏️ Updating renter profile for:', userId, payload);
+      await UserService.updateRenter(userId, payload);
+
+      // Refresh user in context/storage
+      try {
+        await refreshUser();
+        console.log('✅ User refreshed after profile update');
+      } catch (refreshErr) {
+        console.error('❌ Failed to refresh user after update:', refreshErr);
+      }
+
+      setShowEditModal(false);
+      Alert.alert('Success', 'Profile updated successfully');
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleUploadKyc = () => {
@@ -318,6 +381,25 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Address & DOB - show under KYC */}
+      <View style={[styles.section, { paddingTop: theme.spacing.sm }] }>
+        <View style={{ paddingHorizontal: theme.spacing.lg }}>
+          {(user as any)?.address ? (
+            <View style={{ marginBottom: theme.spacing.md }}>
+              <Text style={[styles.sectionTitle, { fontSize: 14, fontWeight: '600' }]}>Address</Text>
+              <Text style={[styles.userEmail, { marginTop: 6 }]}>{(user as any).address}</Text>
+            </View>
+          ) : null}
+
+          {(user as any)?.date_of_birth ? (
+            <View>
+              <Text style={[styles.sectionTitle, { fontSize: 14, fontWeight: '600' }]}>Date of Birth</Text>
+              <Text style={[styles.userEmail, { marginTop: 6 }]}> {new Date((user as any).date_of_birth).toLocaleDateString()}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
       {/* User Profile Section */}
       <View style={styles.profileSection}>
         <View style={styles.avatarWrapper}>
@@ -334,6 +416,12 @@ export default function ProfileScreen() {
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{user.full_name || 'User'}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
+          {(user as any)?.address ? (
+            <Text style={[styles.userEmail, { marginTop: 6 }]}>{(user as any).address}</Text>
+          ) : null}
+          {(user as any)?.date_of_birth ? (
+            <Text style={[styles.userEmail, { marginTop: 4 }]}>DOB: {new Date((user as any).date_of_birth).toLocaleDateString()}</Text>
+          ) : null}
         </View>
 
         <TouchableOpacity style={styles.editProfileButton} onPress={handleEditProfile}>
@@ -347,7 +435,7 @@ export default function ProfileScreen() {
         
         {kycLoading ? (
           <View style={styles.kycLoadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <ActivityIndicator size="small" color={theme.colors.primary.main} />
             <Text style={styles.kycLoadingText}>Loading verification status...</Text>
           </View>
         ) : kycData ? (
@@ -418,7 +506,7 @@ export default function ProfileScreen() {
                 onPress={handleUploadKyc}
                 disabled={uploadingKyc}
               >
-                <Ionicons name="refresh" size={20} color={theme.colors.white} />
+                <Ionicons name="refresh" size={20} color={theme.colors.text.inverse} />
                 <Text style={styles.kycButtonText}>
                   {uploadingKyc ? 'Uploading...' : 'Resubmit Document'}
                 </Text>
@@ -431,7 +519,7 @@ export default function ProfileScreen() {
             onPress={handleUploadKyc}
             disabled={uploadingKyc}
           >
-            <Ionicons name="cloud-upload-outline" size={48} color={theme.colors.primary} />
+            <Ionicons name="cloud-upload-outline" size={48} color={theme.colors.primary.main} />
             <Text style={styles.kycUploadTitle}>
               {uploadingKyc ? 'Uploading...' : 'Upload Verification Document'}
             </Text>
@@ -441,7 +529,7 @@ export default function ProfileScreen() {
             {uploadingKyc && (
               <ActivityIndicator 
                 size="small" 
-                color={theme.colors.primary} 
+                color={theme.colors.primary.main} 
                 style={{ marginTop: 12 }}
               />
             )}
@@ -449,94 +537,17 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* General Section */}
+      {/* Only keep KYC and Logout - simplified section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>General</Text>
-        
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="heart-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>Favorite Cars</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="time-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>Previous Rent</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="notifications-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>Notification</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="link-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>Connected to QENT Partnerships</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Support Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Support</Text>
-        
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="settings-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>Settings</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="language-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>Languages</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="people-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>Invite Friends</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="document-text-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>privacy policy</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="help-circle-outline" size={20} color={theme.colors.text.primary} />
-          </View>
-          <Text style={styles.menuLabel}>Help Support</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-          <View style={styles.menuIconContainer}>
-            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
-          </View>
-          <Text style={[styles.menuLabel, styles.logoutLabel]}>Log out</Text>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.error} />
-        </TouchableOpacity>
+        <View style={{ paddingHorizontal: theme.spacing.lg }}>
+          <TouchableOpacity style={[styles.menuItem, { paddingVertical: theme.spacing.lg }]} onPress={handleLogout}>
+            <View style={styles.menuIconContainer}>
+              <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+            </View>
+            <Text style={[styles.menuLabel, styles.logoutLabel]}>Log out</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.error} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Bottom spacing */}
@@ -668,6 +679,94 @@ export default function ProfileScreen() {
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.modalSubmitButtonText}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCancelEdit}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <TouchableOpacity onPress={handleCancelEdit} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Full name</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Full name"
+                  placeholderTextColor={theme.colors.text.secondary}
+                  value={editFullName}
+                  onChangeText={setEditFullName}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Phone number</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Phone number"
+                  placeholderTextColor={theme.colors.text.secondary}
+                  value={editPhone}
+                  onChangeText={setEditPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Address</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Address"
+                  placeholderTextColor={theme.colors.text.secondary}
+                  value={editAddress}
+                  onChangeText={setEditAddress}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Date of Birth (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={theme.colors.text.secondary}
+                  value={editDob}
+                  onChangeText={setEditDob}
+                  maxLength={10}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={handleCancelEdit}
+                disabled={savingProfile}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalSubmitButton]}
+                onPress={handleSaveProfile}
+                disabled={savingProfile}
+              >
+                {savingProfile ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalSubmitButtonText}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -875,7 +974,6 @@ const styles = StyleSheet.create({
   kycTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
   },
   kycType: {
     fontSize: 16,
@@ -908,17 +1006,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.sm,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
   },
   kycButtonResubmit: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary.main,
   },
   kycButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: theme.colors.white,
+    color: theme.colors.text.inverse,
   },
   kycUploadCard: {
     backgroundColor: theme.colors.background.paper,
@@ -926,7 +1023,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xl,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: theme.colors.primary + '20',
+  borderColor: theme.colors.primary.main + '20',
     borderStyle: 'dashed',
   },
   kycUploadTitle: {
@@ -995,7 +1092,6 @@ const styles = StyleSheet.create({
   pickerContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
   },
   pickerOption: {
     flex: 1,
@@ -1056,7 +1152,6 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
     padding: theme.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: theme.colors.background.dark,
@@ -1084,4 +1179,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-});
+} as any);
+
