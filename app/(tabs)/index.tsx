@@ -64,7 +64,7 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       setError(null);
-      const response = await VehicleService.getAvailableVehicles({ page: 1, take: 10 });
+      const response = await VehicleService.findAll({ page: 1, take: 10, is_active: true });
       console.log('Vehicles response:', JSON.stringify(response, null, 2));
       console.log('First vehicle:', response.data?.[0]);
       setVehicles((response.data || []) as VehicleWithId[]);

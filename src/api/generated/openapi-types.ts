@@ -436,6 +436,38 @@ export interface paths {
     patch: operations['BookingController_cancelBooking'];
     trace?: never;
   };
+  '/bookings/statistics/monthly-revenue': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['BookingController_getMonthlyRevenue'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/bookings/statistics/booking-count': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['BookingController_getBookingStatistics'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/payments/confirm-cash/{id}': {
     parameters: {
       query?: never;
@@ -871,6 +903,8 @@ export interface components {
       type: 'national_id' | 'passport' | 'driver_license' | 'other';
       /** @description Document identification number */
       document_number: string;
+      /** @description Document img url */
+      document_img_url: string;
       /**
        * Format: date-time
        * @description Document expiry date
@@ -919,7 +953,7 @@ export interface components {
       is_active: boolean;
       phone: string;
     };
-    '1b24645674a767b447a12': {
+    b8c8e60d414126f31db67: {
       data: components['schemas']['UserWithRoleExtra'][];
       /**
        * @example {
@@ -931,7 +965,7 @@ export interface components {
        */
       meta: Record<string, never>;
     };
-    b24645674a767b447a124: {
+    '8c8e60d414126f31db67f': {
       data: components['schemas']['Staff'][];
       /**
        * @example {
@@ -943,7 +977,7 @@ export interface components {
        */
       meta: Record<string, never>;
     };
-    '24645674a767b447a1248': {
+    c8e60d414126f31db67ff: {
       data: components['schemas']['UserWithRoleExtra'] | null;
     };
     UpdateRenterDto: {
@@ -969,7 +1003,7 @@ export interface components {
        */
       date_of_birth?: string;
     };
-    '4645674a767b447a1248f': {
+    '8e60d414126f31db67ff5': {
       data: components['schemas']['UserWithRoleExtra'] | null;
     };
     UpdateStaffDto: {
@@ -994,7 +1028,7 @@ export interface components {
        */
       station_id?: string;
     };
-    '645674a767b447a1248fd': {
+    e60d414126f31db67ff5f: {
       data: components['schemas']['UserWithRoleExtra'] | null;
     };
     Vehicle: {
@@ -1006,6 +1040,7 @@ export interface components {
       battery_capacity_kwh?: number;
       range_km?: number;
       vin_number?: string;
+      license_plate: string;
       img_url?: string;
       is_active: boolean;
       current_battery_capacity_kwh?: number;
@@ -1017,10 +1052,10 @@ export interface components {
       deposit_amount: number;
       image_kit_file_id?: string;
     };
-    '5674a767b447a1248fd43': {
+    '0d414126f31db67ff5fea': {
       data: components['schemas']['Vehicle'] | null;
     };
-    '74a767b447a1248fd4370': {
+    '414126f31db67ff5fea36': {
       data: components['schemas']['Vehicle'] | null;
     };
     ChangeStatusDto: {
@@ -1031,25 +1066,7 @@ export interface components {
        */
       status: 'reserved' | 'in_progress' | 'completed' | 'late' | 'cancelled';
     };
-    CreateKycsDto: {
-      /**
-       * @description Loại giấy tờ KYC
-       * @example driver_license
-       * @enum {string}
-       */
-      type: 'national_id' | 'passport' | 'driver_license' | 'other';
-      /**
-       * @description Số giấy tờ (CMND, CCCD, hộ chiếu...)
-       * @example 123456789012
-       */
-      document_number: string;
-      /**
-       * @description Ngày hết hạn của giấy tờ (ISO 8601 format)
-       * @example 1990-01-01
-       */
-      expiry_date?: string;
-    };
-    '7b447a1248fd43706a921': {
+    f31db67ff5fea36cbb550: {
       data: components['schemas']['Kycs'] | null;
     };
     UpdateKycsDto: {
@@ -1069,15 +1086,21 @@ export interface components {
        * @example 1990-01-01
        */
       expiry_date?: string;
+      /**
+       * Format: uri
+       * @description Direct URL of the uploaded KYC document image
+       * @example https://cdn.example.com/kyc/driver-license.png
+       */
+      document_img_url?: string;
     };
-    b447a1248fd43706a9216: {
+    '31db67ff5fea36cbb550b': {
       data: components['schemas']['Kycs'] | null;
     };
     ChangeKycStatusDto: {
       /** @enum {string} */
       status: 'submitted' | 'approved' | 'rejected' | 'expired';
     };
-    '447a1248fd43706a9216d': {
+    '1db67ff5fea36cbb550bf': {
       data: components['schemas']['Kycs'] | null;
     };
     Booking: {
@@ -1148,7 +1171,7 @@ export interface components {
        */
       cancel_reason?: string;
     };
-    '47a1248fd43706a9216d4': {
+    db67ff5fea36cbb550bfa: {
       data: components['schemas']['Booking'] | null;
     };
     UserInResponse: {
@@ -1348,7 +1371,7 @@ export interface components {
       data: components['schemas']['BookingListItemResponse'][];
       meta: components['schemas']['BookingListMetaResponse'];
     };
-    '7a1248fd43706a9216d48': {
+    b67ff5fea36cbb550bfae: {
       data: components['schemas']['Booking'] | null;
     };
     Payment: {
@@ -1413,13 +1436,13 @@ export interface components {
        */
       current_mileage: number;
     };
-    a1248fd43706a9216d48a: {
+    '67ff5fea36cbb550bfae6': {
       data: components['schemas']['Inspection'] | null;
     };
-    '248fd43706a9216d48ac2': {
+    ff5fea36cbb550bfae691: {
       data: components['schemas']['ReportsPhoto'] | null;
     };
-    '48fd43706a9216d48ac28': {
+    f5fea36cbb550bfae691d: {
       data: string[] | null;
     };
     CompleteInspectionDto: {
@@ -1452,7 +1475,7 @@ export interface components {
        */
       over_deposit_fee_amount: number;
     };
-    '8fd43706a9216d48ac28b': {
+    '5fea36cbb550bfae691db': {
       data: Record<string, never> | null;
     };
     Contract: {
@@ -1462,10 +1485,10 @@ export interface components {
       document_url: string;
       image_kit_file_id?: string;
     };
-    d43706a9216d48ac28b28: {
+    ea36cbb550bfae691dba3: {
       data: components['schemas']['Contract'] | null;
     };
-    '3706a9216d48ac28b2822': {
+    '36cbb550bfae691dba3bf': {
       data: components['schemas']['Contract'] | null;
     };
     CreateStationDto: {
@@ -1490,10 +1513,10 @@ export interface components {
        */
       longitude?: number;
     };
-    '4a767b447a1248fd43706': {
+    '14126f31db67ff5fea36c': {
       data: components['schemas']['Station'] | null;
     };
-    a767b447a1248fd43706a: {
+    '4126f31db67ff5fea36cb': {
       data: components['schemas']['Station'][];
       /**
        * @example {
@@ -1505,7 +1528,7 @@ export interface components {
        */
       meta: Record<string, never>;
     };
-    '767b447a1248fd43706a9': {
+    '126f31db67ff5fea36cbb': {
       data: components['schemas']['Station'] | null;
     };
     UpdateStationDto: {
@@ -1530,7 +1553,7 @@ export interface components {
        */
       longitude?: number;
     };
-    '67b447a1248fd43706a92': {
+    '26f31db67ff5fea36cbb5': {
       data: components['schemas']['Station'] | null;
     };
   };
@@ -2120,7 +2143,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['1b24645674a767b447a12'];
+          'application/json': components['schemas']['b8c8e60d414126f31db67'];
         };
       };
       /** @description Invalid payload */
@@ -2211,7 +2234,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['b24645674a767b447a124'];
+          'application/json': components['schemas']['8c8e60d414126f31db67f'];
         };
       };
       /** @description Invalid payload */
@@ -2287,7 +2310,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['24645674a767b447a1248'];
+          'application/json': components['schemas']['c8e60d414126f31db67ff'];
         };
       };
       /** @description Invalid payload */
@@ -2443,7 +2466,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['4645674a767b447a1248f'];
+          'application/json': components['schemas']['8e60d414126f31db67ff5'];
         };
       };
       /** @description Invalid payload */
@@ -2523,7 +2546,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['645674a767b447a1248fd'];
+          'application/json': components['schemas']['e60d414126f31db67ff5f'];
         };
       };
       /** @description Invalid payload */
@@ -2843,6 +2866,11 @@ export interface operations {
           range_km?: number;
           /** @example 5YJ3E1EA7KF317XXX */
           vin_number: string;
+          /**
+           * @description Vehicle license plate
+           * @example 29A-12345
+           */
+          license_plate: string;
           /** @example station_id */
           station_id: string;
           /** @example 50000 */
@@ -2871,7 +2899,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['5674a767b447a1248fd43'];
+          'application/json': components['schemas']['0d414126f31db67ff5fea'];
         };
       };
       /** @description Invalid payload */
@@ -3029,6 +3057,11 @@ export interface operations {
           range_km?: number;
           /** @example 5YJ3E1EA7KF317XXX */
           vin_number?: string;
+          /**
+           * @description Vehicle license plate
+           * @example 29A-12345
+           */
+          license_plate?: string;
           /** @example station_id */
           station_id?: string;
           /** @example 50000 */
@@ -3057,7 +3090,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['74a767b447a1248fd4370'];
+          'application/json': components['schemas']['414126f31db67ff5fea36'];
         };
       };
       /** @description Invalid payload */
@@ -3433,7 +3466,29 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CreateKycsDto'];
+        'multipart/form-data': {
+          /**
+           * @description Type of KYC document
+           * @example driver_license
+           */
+          type: string;
+          /**
+           * @description Document identification number
+           * @example 123456789012
+           */
+          document_number?: string;
+          /**
+           * Format: date
+           * @description Document expiry date (ISO 8601)
+           * @example 2030-12-31
+           */
+          expiry_date?: string;
+          /**
+           * Format: binary
+           * @description KYC document image (jpg, jpeg, png, gif, webp, pdf) - Max 10MB - Optional
+           */
+          document_img_url: string;
+        };
       };
     };
     responses: {
@@ -3443,7 +3498,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['7b447a1248fd43706a921'];
+          'application/json': components['schemas']['f31db67ff5fea36cbb550'];
         };
       };
       /** @description Invalid payload */
@@ -3523,7 +3578,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['b447a1248fd43706a9216'];
+          'application/json': components['schemas']['31db67ff5fea36cbb550b'];
         };
       };
       /** @description Invalid payload */
@@ -3679,7 +3734,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['447a1248fd43706a9216d'];
+          'application/json': components['schemas']['1db67ff5fea36cbb550bf'];
         };
       };
       /** @description Invalid payload */
@@ -3936,7 +3991,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['47a1248fd43706a9216d4'];
+          'application/json': components['schemas']['db67ff5fea36cbb550bfa'];
         };
       };
       /** @description Invalid payload */
@@ -4104,7 +4159,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['7a1248fd43706a9216d48'];
+          'application/json': components['schemas']['b67ff5fea36cbb550bfae'];
         };
       };
       /** @description Invalid payload */
@@ -4181,6 +4236,191 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ResponseMsg'];
+        };
+      };
+      /** @description Invalid payload */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseBadRequest'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseUnauthorized'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseForbidden'];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseNotFound'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseConflict'];
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseInternalError'];
+        };
+      };
+    };
+  };
+  BookingController_getMonthlyRevenue: {
+    parameters: {
+      query?: {
+        /** @description Year for revenue statistics */
+        year?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Monthly revenue statistics */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            data?: {
+              data?: {
+                month?: number;
+                monthName?: string;
+                totalRevenue?: number;
+                totalBookings?: number;
+              }[];
+              year?: number;
+              totalYearRevenue?: number;
+              totalYearBookings?: number;
+            };
+          };
+        };
+      };
+      /** @description Invalid payload */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseBadRequest'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseUnauthorized'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseForbidden'];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseNotFound'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseConflict'];
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseInternalError'];
+        };
+      };
+    };
+  };
+  BookingController_getBookingStatistics: {
+    parameters: {
+      query: {
+        /** @description Period for statistics (day, week, month) */
+        period: 'day' | 'week' | 'month';
+        /** @description Year for statistics */
+        year?: number;
+        /** @description Month for statistics (1-12), required for day/week period */
+        month?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Booking count statistics by period (day/week/month) */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            data?: {
+              /** @enum {string} */
+              period?: 'day' | 'week' | 'month';
+              year?: number;
+              month?: number;
+              data?: Record<string, never>[];
+              summary?: {
+                totalBookings?: number;
+                totalRevenue?: number;
+                verifiedBookings?: number;
+                pendingBookings?: number;
+                cancelledBookings?: number;
+              };
+            };
+          };
         };
       };
       /** @description Invalid payload */
@@ -4497,7 +4737,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['a1248fd43706a9216d48a'];
+          'application/json': components['schemas']['67ff5fea36cbb550bfae6'];
         };
       };
       /** @description Invalid payload */
@@ -4588,7 +4828,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['248fd43706a9216d48ac2'];
+          'application/json': components['schemas']['ff5fea36cbb550bfae691'];
         };
       };
       /** @description Invalid payload */
@@ -4664,7 +4904,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['48fd43706a9216d48ac28'];
+          'application/json': components['schemas']['f5fea36cbb550bfae691d'];
         };
       };
       /** @description Invalid payload */
@@ -4744,7 +4984,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['8fd43706a9216d48ac28b'];
+          'application/json': components['schemas']['5fea36cbb550bfae691db'];
         };
       };
       /** @description Invalid payload */
@@ -4914,7 +5154,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['d43706a9216d48ac28b28'];
+          'application/json': components['schemas']['ea36cbb550bfae691dba3'];
         };
       };
       /** @description Invalid payload */
@@ -5005,7 +5245,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['3706a9216d48ac28b2822'];
+          'application/json': components['schemas']['36cbb550bfae691dba3bf'];
         };
       };
       /** @description Invalid payload */
@@ -5168,7 +5408,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['a767b447a1248fd43706a'];
+          'application/json': components['schemas']['4126f31db67ff5fea36cb'];
         };
       };
       /** @description Invalid payload */
@@ -5246,7 +5486,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['4a767b447a1248fd43706'];
+          'application/json': components['schemas']['14126f31db67ff5fea36c'];
         };
       };
       /** @description Invalid payload */
@@ -5322,7 +5562,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['767b447a1248fd43706a9'];
+          'application/json': components['schemas']['126f31db67ff5fea36cbb'];
         };
       };
       /** @description Invalid payload */
@@ -5402,7 +5642,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['67b447a1248fd43706a92'];
+          'application/json': components['schemas']['26f31db67ff5fea36cbb5'];
         };
       };
       /** @description Invalid payload */

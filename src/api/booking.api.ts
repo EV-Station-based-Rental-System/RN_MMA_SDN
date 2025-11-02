@@ -77,6 +77,30 @@ class BookingService {
       throw error;
     }
   }
+
+  /**
+   * getMonthlyRevenue
+   */
+  async getMonthlyRevenue(params?: any): Promise<any> {
+    try {
+      return await ApiClient.get(`/bookings/statistics/monthly-revenue`, { params });
+    } catch (error) {
+      console.error('getMonthlyRevenue error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * getBookingStatistics
+   */
+  async getBookingStatistics(params?: any): Promise<any> {
+    try {
+      return await ApiClient.get(`/bookings/statistics/booking-count`, { params });
+    } catch (error) {
+      console.error('getBookingStatistics error:', error);
+      throw error;
+    }
+  }
 }
 
 export default new BookingService();

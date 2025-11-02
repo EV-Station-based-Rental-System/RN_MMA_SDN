@@ -12,15 +12,17 @@ import {
   RefreshControl,
   Alert,
   Image,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
-// import * as ImagePicker from 'expo-image-picker';
-// import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { theme } from '@/src/theme';
 import { useAuth } from '@/src/contexts/AuthContext';
 import KycService from '@/src/api/kyc.api';
+import UserService from '@/src/api/user.api';
 import type { components } from '@/src/api/generated/openapi-types';
 
 type KYC = components['schemas']['Kycs'];
@@ -33,6 +35,54 @@ export default function ProfileScreen() {
   const [kycData, setKycData] = useState<(KYC & { _id?: string }) | null>(null);
   const [kycLoading, setKycLoading] = useState(false);
   const [uploadingKyc, setUploadingKyc] = useState(false);
+  
+  // KYC Form state
+  const [showKycModal, setShowKycModal] = useState(false);
+  const [kycType, setKycType] = useState<'national_id' | 'passport' | 'driver_license' | 'other'>('national_id');
+  const [documentNumber, setDocumentNumber] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [documentImage, setDocumentImage] = useState<string | null>(null);
+
+  // Debug: Log user state changes
+  useEffect(() => {
+    console.log('👤 Profile screen - User state:', {
+      hasUser: !!user,
+      userId,
+      userEmail: user?.email,
+      isLoading
+    });
+  }, [user, userId, isLoading]);
+
+  // Load KYC data when user is available
+  useEffect(() => {
+    const loadKycData = async () => {
+      if (!user || !userId) return;
+
+      try {
+        setKycLoading(true);
+        console.log('🔍 Loading KYC data for user:', userId);
+        
+        // Get user data which includes KYC information
+        const userResponse = await UserService.findOne(userId);
+        const userData = userResponse.data;
+        
+        if (userData?.kycs) {
+          console.log('✅ Found existing KYC data:', userData.kycs);
+          setKycData(userData.kycs as any);
+        } else {
+          console.log('ℹ️ No KYC data found for user');
+          setKycData(null);
+        }
+      } catch (error) {
+        console.error('❌ Failed to load KYC data:', error);
+        setKycData(null);
+      } finally {
+        setKycLoading(false);
+      }
+    };
+
+    loadKycData();
+  }, [user, userId]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -65,76 +115,119 @@ export default function ProfileScreen() {
   };
 
   const handleUploadKyc = () => {
-    Alert.alert(
-      'Upload KYC Document',
-      'Choose document type',
-      [
-        {
-          text: 'National ID',
-          onPress: () => showKycForm('national_id'),
-        },
-        {
-          text: 'Passport',
-          onPress: () => showKycForm('passport'),
-        },
-        {
-          text: 'Driver License',
-          onPress: () => showKycForm('driver_license'),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    setShowKycModal(true);
   };
 
-  const showKycForm = (type: 'national_id' | 'passport' | 'driver_license' | 'other') => {
-    Alert.prompt(
-      'Enter Document Number',
-      `Enter your ${type.replace('_', ' ')} number:`,
-      async (documentNumber) => {
-        if (!documentNumber || documentNumber.trim() === '') {
-          Alert.alert('Error', 'Document number is required');
-          return;
+  const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photo library');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setDocumentImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const handleSubmitKyc = async () => {
+    // Validate form
+    if (!documentNumber.trim()) {
+      Alert.alert('Validation Error', 'Please enter document number');
+      return;
+    }
+
+    if (!documentImage) {
+      Alert.alert('Validation Error', 'Please upload document image');
+      return;
+    }
+
+    try {
+      setUploadingKyc(true);
+
+      console.log('📤 Starting KYC upload for userId:', userId);
+
+      // Prepare KYC data - service will handle file upload automatically
+      const kycPayload: CreateKycDto = {
+        type: kycType,
+        document_number: documentNumber.trim(),
+        document_img_url: documentImage, // Local URI - service will convert to file for upload
+        ...(expiryDate.trim() && { expiry_date: expiryDate.trim() }),
+      };
+
+      const result = await KycService.create(kycPayload);
+      console.log('✅ KYC upload successful:', result);
+
+      // Refresh user data to get updated KYC information
+      if (userId) {
+        console.log('🔄 Refreshing user data after KYC upload for userId:', userId);
+        try {
+          const userResponse = await UserService.findOne(userId);
+          console.log('📋 User response received:', userResponse);
+          console.log('👤 User data from API:', userResponse.data);
+          console.log('🆔 User ID from API response:', userResponse.data?._id || userResponse.data?.id);
+
+          const updatedUser = userResponse.data;
+
+          // Extract KYC data from user response
+          if (updatedUser?.kycs) {
+            console.log('✅ Found KYC data in user response:', updatedUser.kycs);
+            setKycData(updatedUser.kycs as any);
+          } else {
+            console.log('⚠️ No KYC data found in user response, using upload response');
+            setKycData(result as any);
+          }
+        } catch (userError) {
+          console.error('❌ Failed to refresh user data:', userError);
+          // Fallback to using the upload response
+          setKycData(result as any);
         }
+      } else {
+        console.log('⚠️ No userId available, using upload response');
+        setKycData(result as any);
+      }
+      
+      // Reset form and close modal
+      setShowKycModal(false);
+      setDocumentNumber('');
+      setExpiryDate('');
+      setDocumentImage(null);
+      setKycType('national_id');
+      
+      Alert.alert(
+        'Success',
+        'KYC document submitted successfully! It will be reviewed by our team.'
+      );
+    } catch (error: any) {
+      console.error('Upload KYC error:', error);
+      Alert.alert(
+        'Error',
+        error?.response?.data?.message || 'Failed to upload KYC document'
+      );
+    } finally {
+      setUploadingKyc(false);
+    }
+  };
 
-        Alert.prompt(
-          'Expiry Date (Optional)',
-          'Enter expiry date (YYYY-MM-DD):',
-          async (expiryDate) => {
-            try {
-              setUploadingKyc(true);
-
-              const kycData: CreateKycDto = {
-                type,
-                document_number: documentNumber.trim(),
-                ...(expiryDate && expiryDate.trim() && { expiry_date: expiryDate.trim() }),
-              };
-
-              const result = await KycService.createKyc(kycData);
-              setKycData(result as any);
-              
-              Alert.alert(
-                'Success',
-                'KYC document submitted successfully! It will be reviewed by our team.'
-              );
-            } catch (error: any) {
-              console.error('Upload KYC error:', error);
-              Alert.alert(
-                'Error',
-                error?.response?.data?.message || 'Failed to upload KYC document'
-              );
-            } finally {
-              setUploadingKyc(false);
-            }
-          },
-          'plain-text',
-          '',
-          'default'
-        );
-      },
-      'plain-text',
-      '',
-      'default'
-    );
+  const handleCancelKyc = () => {
+    setShowKycModal(false);
+    setDocumentNumber('');
+    setExpiryDate('');
+    setDocumentImage(null);
+    setKycType('national_id');
   };
 
   const getKycStatusColor = (status: string) => {
@@ -262,34 +355,34 @@ export default function ProfileScreen() {
             <View style={styles.kycHeader}>
               <View style={styles.kycTitleRow}>
                 <Ionicons 
-                  name={getKycStatusIcon(kycData.status)} 
+                  name={getKycStatusIcon(kycData.status || 'submitted')} 
                   size={24} 
-                  color={getKycStatusColor(kycData.status)} 
+                  color={getKycStatusColor(kycData.status || 'submitted')} 
                 />
                 <Text style={styles.kycType}>
-                  {kycData.type.replace('_', ' ').toUpperCase()}
+                  {kycData.type?.replace('_', ' ').toUpperCase() || 'DOCUMENT'}
                 </Text>
               </View>
               <View 
                 style={[
                   styles.kycStatusBadge, 
-                  { backgroundColor: getKycStatusColor(kycData.status) + '20' }
+                  { backgroundColor: getKycStatusColor(kycData.status || 'submitted') + '20' }
                 ]}
               >
                 <Text 
                   style={[
                     styles.kycStatusText, 
-                    { color: getKycStatusColor(kycData.status) }
+                    { color: getKycStatusColor(kycData.status || 'submitted') }
                   ]}
                 >
-                  {kycData.status.toUpperCase()}
+                  {kycData.status?.toUpperCase() || 'UNKNOWN'}
                 </Text>
               </View>
             </View>
             
             <View style={styles.kycDetails}>
               <Text style={styles.kycLabel}>Document Number:</Text>
-              <Text style={styles.kycValue}>{kycData.document_number}</Text>
+              <Text style={styles.kycValue}>{kycData.document_number || 'N/A'}</Text>
               
               {kycData.expiry_date && (
                 <>
@@ -448,6 +541,139 @@ export default function ProfileScreen() {
 
       {/* Bottom spacing */}
       <View style={styles.bottomSpacer} />
+
+      {/* KYC Upload Modal */}
+      <Modal
+        visible={showKycModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCancelKyc}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Upload KYC Document</Text>
+              <TouchableOpacity onPress={handleCancelKyc} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              {/* Document Type Picker */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Document Type</Text>
+                <View style={styles.pickerContainer}>
+                  <TouchableOpacity
+                    style={[styles.pickerOption, kycType === 'national_id' && styles.pickerOptionSelected]}
+                    onPress={() => setKycType('national_id')}
+                  >
+                    <Text style={[styles.pickerOptionText, kycType === 'national_id' && styles.pickerOptionTextSelected]}>
+                      National ID
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.pickerOption, kycType === 'passport' && styles.pickerOptionSelected]}
+                    onPress={() => setKycType('passport')}
+                  >
+                    <Text style={[styles.pickerOptionText, kycType === 'passport' && styles.pickerOptionTextSelected]}>
+                      Passport
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.pickerOption, kycType === 'driver_license' && styles.pickerOptionSelected]}
+                    onPress={() => setKycType('driver_license')}
+                  >
+                    <Text style={[styles.pickerOptionText, kycType === 'driver_license' && styles.pickerOptionTextSelected]}>
+                      Driver License
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.pickerOption, kycType === 'other' && styles.pickerOptionSelected]}
+                    onPress={() => setKycType('other')}
+                  >
+                    <Text style={[styles.pickerOptionText, kycType === 'other' && styles.pickerOptionTextSelected]}>
+                      Other
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Document Number Input */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Document Number *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="Enter document number"
+                  placeholderTextColor={theme.colors.text.secondary}
+                  value={documentNumber}
+                  onChangeText={setDocumentNumber}
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              {/* Expiry Date Input */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Expiry Date (Optional)</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={theme.colors.text.secondary}
+                  value={expiryDate}
+                  onChangeText={setExpiryDate}
+                  maxLength={10}
+                />
+              </View>
+
+              {/* Image Upload */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Document Image *</Text>
+                {documentImage ? (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image
+                      source={{ uri: documentImage }}
+                      style={styles.imagePreview}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.imageRemoveButton}
+                      onPress={() => setDocumentImage(null)}
+                    >
+                      <Ionicons name="close-circle" size={24} color={theme.colors.error} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.imagePickerButton} onPress={handlePickImage}>
+                    <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.primary.main} />
+                    <Text style={styles.imagePickerText}>Tap to upload image</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
+
+            {/* Modal Actions */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={handleCancelKyc}
+                disabled={uploadingKyc}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalSubmitButton]}
+                onPress={handleSubmitKyc}
+                disabled={uploadingKyc}
+              >
+                {uploadingKyc ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.modalSubmitButtonText}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -716,5 +942,146 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: theme.colors.background.default,
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.background.dark,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  modalCloseButton: {
+    padding: theme.spacing.xs,
+  },
+  modalContent: {
+    padding: theme.spacing.lg,
+  },
+  formGroup: {
+    marginBottom: theme.spacing.lg,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.background.dark,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    fontSize: 15,
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.background.paper,
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  pickerOption: {
+    flex: 1,
+    minWidth: '45%',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.background.dark,
+    backgroundColor: theme.colors.background.paper,
+    alignItems: 'center',
+  },
+  pickerOptionSelected: {
+    borderColor: theme.colors.primary.main,
+    backgroundColor: theme.colors.primary.main + '10',
+  },
+  pickerOptionText: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    fontWeight: '500',
+  },
+  pickerOptionTextSelected: {
+    color: theme.colors.primary.main,
+    fontWeight: '600',
+  },
+  imagePickerButton: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.primary.main,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.xl * 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary.main + '05',
+  },
+  imagePickerText: {
+    marginTop: theme.spacing.sm,
+    fontSize: 14,
+    color: theme.colors.primary.main,
+    fontWeight: '500',
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: theme.borderRadius.md,
+  },
+  imageRemoveButton: {
+    position: 'absolute',
+    top: theme.spacing.sm,
+    right: theme.spacing.sm,
+    backgroundColor: theme.colors.background.default,
+    borderRadius: 12,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.background.dark,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: theme.colors.background.dark,
+  },
+  modalCancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  modalSubmitButton: {
+    backgroundColor: theme.colors.primary.main,
+  },
+  modalSubmitButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
