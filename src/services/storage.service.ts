@@ -15,6 +15,10 @@ class StorageService {
   async setAccessToken(token: string): Promise<void> {
     try {
       await AsyncStorage.setItem(KEYS.ACCESS_TOKEN, token);
+      console.warn('✅ Token saved to AsyncStorage');
+      // Verify it was saved
+      const saved = await AsyncStorage.getItem(KEYS.ACCESS_TOKEN);
+      console.warn('🔍 Verify saved token:', saved ? saved.substring(0, 20) + '...' : 'NULL');
     } catch (error) {
       console.error('Error saving access token:', error);
       throw error;
@@ -23,7 +27,13 @@ class StorageService {
 
   async getAccessToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem(KEYS.ACCESS_TOKEN);
+      const token = await AsyncStorage.getItem(KEYS.ACCESS_TOKEN);
+      if (token) {
+        console.warn('🔑 Token retrieved from storage:', token.substring(0, 20) + '...');
+      } else {
+        console.warn('⚠️ No token found in storage');
+      }
+      return token;
     } catch (error) {
       console.error('Error getting access token:', error);
       return null;

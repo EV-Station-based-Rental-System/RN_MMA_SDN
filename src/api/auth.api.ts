@@ -4,6 +4,7 @@
  */
 
 import ApiClient from '@/src/services/api.client';
+import StorageService from '@/src/services/storage.service';
 
 class AuthService {
   /**
@@ -11,9 +12,40 @@ class AuthService {
    */
   async login(data: any): Promise<any> {
     try {
-      return await ApiClient.post(`/auth/login`, data);
+      const response = await ApiClient.post(`/auth/login`, data);
+      
+      // Backend returns: { data: { access_token: "..." } }
+      const token = response?.data?.access_token || response?.access_token || response?.token;
+      
+      if (token) {
+        console.warn('💾 Saving token to storage:', token.substring(0, 20) + '...');
+        await StorageService.setAccessToken(token);
+        return token;
+      }
+      
+      console.error('❌ No token found in response:', response);
+      return response;
     } catch (error) {
       console.error('login error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get stored token
+   */
+  async getToken(): Promise<string | null> {
+    return await StorageService.getAccessToken();
+  }
+
+  /**
+   * logout
+   */
+  async logout(): Promise<void> {
+    try {
+      await StorageService.clearAll();
+    } catch (error) {
+      console.error('logout error:', error);
       throw error;
     }
   }

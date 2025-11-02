@@ -28,15 +28,21 @@ class ApiClient {
         
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
+          if (__DEV__) {
+            console.warn('🔑 Token added to request:', token.substring(0, 20) + '...');
+          }
+        } else if (__DEV__) {
+          console.warn('⚠️ No token found for request to:', config.url);
         }
 
         // Log request trong development
         if (__DEV__) {
-          console.log('🚀 API Request:', {
+          console.warn('🚀 API Request:', {
             method: config.method?.toUpperCase(),
             url: config.url,
             data: config.data,
             params: config.params,
+            hasAuth: !!token,
           });
         }
 
@@ -53,7 +59,7 @@ class ApiClient {
       (response) => {
         // Log response trong development
         if (__DEV__) {
-          console.log('✅ API Response:', {
+          console.warn('✅ API Response:', {
             url: response.config.url,
             status: response.status,
             data: response.data,
@@ -77,33 +83,33 @@ class ApiClient {
           switch (response.status) {
             case 401:
               // Unauthorized - Token hết hạn hoặc không hợp lệ
-              console.log('🔒 Unauthorized - Clearing token...');
+              console.warn('🔒 Unauthorized - Clearing token...');
               await StorageService.clearAll();
               // TODO: Navigate to login screen
               break;
 
             case 403:
               // Forbidden - Không có quyền truy cập
-              console.log('🚫 Forbidden - Access denied');
+              console.warn('🚫 Forbidden - Access denied');
               break;
 
             case 404:
               // Not Found
-              console.log('🔍 Resource not found');
+              console.warn('🔍 Resource not found');
               break;
 
             case 409:
               // Conflict - Dữ liệu đã tồn tại
-              console.log('⚠️ Conflict - Resource already exists');
+              console.warn('⚠️ Conflict - Resource already exists');
               break;
 
             case 500:
               // Server Error
-              console.log('💥 Server error');
+              console.warn('💥 Server error');
               break;
 
             default:
-              console.log('❓ Unknown error:', response.status);
+              console.warn('❓ Unknown error:', response.status);
           }
         } else if (error.request) {
           // Request được gửi nhưng không nhận được response

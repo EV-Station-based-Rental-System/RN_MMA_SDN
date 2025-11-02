@@ -4,6 +4,7 @@
  */
 
 import ApiClient from '@/src/services/api.client';
+import type { VehicleWithPricingAndStation, VehicleQueryParams } from '@/src/types/api.types';
 
 class VehicleService {
   /**
@@ -19,6 +20,19 @@ class VehicleService {
   }
 
   /**
+   * Get available vehicles with pagination
+   */
+  async getAvailableVehicles(params?: VehicleQueryParams): Promise<{ data: VehicleWithPricingAndStation[] }> {
+    try {
+      const response = await ApiClient.get(`/vehicle`, { params });
+      return response;
+    } catch (error) {
+      console.error('getAvailableVehicles error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * findAll
    */
   async findAll(params?: any): Promise<any> {
@@ -26,6 +40,19 @@ class VehicleService {
       return await ApiClient.get(`/vehicle`, { params });
     } catch (error) {
       console.error('findAll error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get vehicle by ID
+   */
+  async getVehicleById(id: string): Promise<VehicleWithPricingAndStation> {
+    try {
+      const response = await ApiClient.get(`/vehicle/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('getVehicleById error:', error);
       throw error;
     }
   }
@@ -83,7 +110,7 @@ class VehicleService {
    */
   async restore(id: string): Promise<any> {
     try {
-      return await ApiClient.patch(`/vehicle/restore/${id}`, data);
+      return await ApiClient.patch(`/vehicle/restore/${id}`);
     } catch (error) {
       console.error('restore error:', error);
       throw error;
@@ -95,7 +122,7 @@ class VehicleService {
    */
   async softDelete(id: string): Promise<any> {
     try {
-      return await ApiClient.patch(`/vehicle/soft-delete/${id}`, data);
+      return await ApiClient.patch(`/vehicle/soft-delete/${id}`);
     } catch (error) {
       console.error('softDelete error:', error);
       throw error;
