@@ -36,10 +36,7 @@ export default function CarDetailsScreen() {
     try {
       setLoading(true);
       setError(null);
-      console.log('Loading vehicle details for ID:', vehicleId);
-      console.log('API endpoint will be:', `/vehicle/${vehicleId}`);
       const data = await VehicleService.findOne(vehicleId);
-      console.log('Vehicle details loaded:', data);
       setVehicle(data as VehicleWithId);
     } catch (err: any) {
       console.error('Load vehicle details error:', err);
@@ -221,37 +218,43 @@ export default function CarDetailsScreen() {
           )}
 
           {/* Pricing Information */}
-          {vehicle.pricing && (
+          {((vehicle as any).price_per_hour || vehicle.pricing) && (
             <>
               <Text style={styles.sectionTitle}>Pricing Details</Text>
               <View style={styles.pricingCard}>
                 <View style={styles.pricingRow}>
                   <Text style={styles.pricingLabel}>Hourly Rate</Text>
-                  <Text style={styles.pricingValue}>{vehicle.pricing.price_per_hour.toLocaleString('vi-VN')}₫/hr</Text>
+                  <Text style={styles.pricingValue}>
+                    {((vehicle as any).price_per_hour || vehicle.pricing?.price_per_hour || 0).toLocaleString('vi-VN')}₫/hr
+                  </Text>
                 </View>
-                {vehicle.pricing.price_per_day && (
+                {((vehicle as any).price_per_day || vehicle.pricing?.price_per_day) && (
                   <View style={styles.pricingRow}>
                     <Text style={styles.pricingLabel}>Daily Rate</Text>
-                    <Text style={styles.pricingValue}>{vehicle.pricing.price_per_day.toLocaleString('vi-VN')}₫/day</Text>
+                    <Text style={styles.pricingValue}>
+                      {((vehicle as any).price_per_day || vehicle.pricing?.price_per_day || 0).toLocaleString('vi-VN')}₫/day
+                    </Text>
                   </View>
                 )}
                 <View style={styles.pricingRow}>
                   <Text style={styles.pricingLabel}>Deposit</Text>
-                  <Text style={styles.pricingValue}>{vehicle.pricing.deposit_amount.toLocaleString('vi-VN')}₫</Text>
+                  <Text style={styles.pricingValue}>
+                    {((vehicle as any).deposit_amount || vehicle.pricing?.deposit_amount || 0).toLocaleString('vi-VN')}₫
+                  </Text>
                 </View>
-                {vehicle.pricing.late_return_fee_per_hour && (
+                {vehicle.pricing?.late_return_fee_per_hour && (
                   <View style={styles.pricingRow}>
                     <Text style={styles.pricingLabel}>Late Return Fee</Text>
                     <Text style={styles.pricingValue}>{vehicle.pricing.late_return_fee_per_hour.toLocaleString('vi-VN')}₫/hr</Text>
                   </View>
                 )}
-                {vehicle.pricing.mileage_limit_per_day && (
+                {vehicle.pricing?.mileage_limit_per_day && (
                   <View style={styles.pricingRow}>
                     <Text style={styles.pricingLabel}>Daily Mileage Limit</Text>
                     <Text style={styles.pricingValue}>{vehicle.pricing.mileage_limit_per_day} km</Text>
                   </View>
                 )}
-                {vehicle.pricing.excess_mileage_fee && (
+                {vehicle.pricing?.excess_mileage_fee && (
                   <View style={styles.pricingRow}>
                     <Text style={styles.pricingLabel}>Excess Mileage Fee</Text>
                     <Text style={styles.pricingValue}>{vehicle.pricing.excess_mileage_fee.toLocaleString('vi-VN')}₫/km</Text>
@@ -270,7 +273,7 @@ export default function CarDetailsScreen() {
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Starting from</Text>
           <Text style={styles.price}>
-            {(vehicle.pricing?.price_per_hour || 0).toLocaleString('vi-VN')}₫/hr
+            {((vehicle as any).price_per_hour || vehicle.pricing?.price_per_hour || 0).toLocaleString('vi-VN')}₫/hr
           </Text>
         </View>
         <CustomButton
