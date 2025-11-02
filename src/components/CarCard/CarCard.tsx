@@ -65,7 +65,7 @@ export function CarCard({
                 <Text style={styles.seats}> {seats} Seats</Text>
               </View>
             )}
-            <Text style={styles.price}>${price}/Day</Text>
+            <Text style={styles.price}>{price.toLocaleString('vi-VN')}₫/hr</Text>
           </View>
         </View>
         
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   price: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: theme.colors.text.primary,
   },

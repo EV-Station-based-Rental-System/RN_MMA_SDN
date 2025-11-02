@@ -9,17 +9,24 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Linking,
+  Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
 import { CustomButton } from '@/src/components';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const payUrl = params.payUrl as string;
+  const message = (params.message as string) || 'Payment successful';
+  
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const [opening, setOpening] = useState(false);
 
   useEffect(() => {
     // Success animation
@@ -36,7 +43,28 @@ export default function PaymentSuccessScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleOpenPayment = async () => {
+    if (!payUrl) return;
+
+    try {
+      setOpening(true);
+      const supported = await Linking.canOpenURL(payUrl);
+      
+      if (supported) {
+        await Linking.openURL(payUrl);
+      } else {
+        Alert.alert('Error', 'Cannot open payment URL');
+      }
+    } catch (error) {
+      console.error('Open URL error:', error);
+      Alert.alert('Error', 'Failed to open payment URL');
+    } finally {
+      setOpening(false);
+    }
+  };
 
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -77,10 +105,19 @@ export default function PaymentSuccessScreen() {
           </Animated.View>
         </View>
 
-        <Text style={styles.successTitle}>Payment successful</Text>
+        <Text style={styles.successTitle}>{message}</Text>
         <Text style={styles.successSubtitle}>
-          Your car rent Booking has been successfully
+          {payUrl ? 'Please complete your payment to finalize your booking' : 'Your car rent booking has been successfully completed'}
         </Text>
+
+        {payUrl && (
+          <View style={styles.paymentUrlCard}>
+            <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary.main} />
+            <Text style={styles.paymentUrlText}>
+              Tap the button below to proceed to payment
+            </Text>
+          </View>
+        )}
 
         {/* Booking Information Card */}
         <View style={styles.card}>
@@ -166,11 +203,35 @@ export default function PaymentSuccessScreen() {
 
       {/* Bottom Bar */}
       <View style={styles.bottomBar}>
-        <CustomButton
-          title="Back to Home"
-          onPress={() => router.push('/')}
-          style={styles.homeButton}
-        />
+        {payUrl ? (
+          <>
+            <CustomButton
+              title={opening ? 'Opening...' : 'Proceed to Payment'}
+              onPress={handleOpenPayment}
+              loading={opening}
+              disabled={opening}
+              style={styles.homeButton}
+            />
+            <CustomButton
+              title="I'll Pay Later"
+              onPress={() => router.replace('/(tabs)/bookings')}
+              style={styles.secondaryButton}
+            />
+          </>
+        ) : (
+          <>
+            <CustomButton
+              title="View My Bookings"
+              onPress={() => router.replace('/(tabs)/bookings')}
+              style={styles.homeButton}
+            />
+            <CustomButton
+              title="Back to Home"
+              onPress={() => router.replace('/(tabs)')}
+              style={styles.secondaryButton}
+            />
+          </>
+        )}
       </View>
     </View>
   );
@@ -368,5 +429,27 @@ const styles = StyleSheet.create({
   },
   homeButton: {
     height: 56,
+  },
+  paymentUrlCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: theme.colors.background.paper,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    gap: theme.spacing.sm,
+    marginHorizontal: theme.spacing.lg,
+  },
+  paymentUrlText: {
+    flex: 1,
+    fontSize: 14,
+    color: theme.colors.text.primary,
+    lineHeight: 20,
+  },
+  secondaryButton: {
+    height: 56,
+    marginTop: theme.spacing.sm,
+    backgroundColor: theme.colors.background.paper,
   },
 });
