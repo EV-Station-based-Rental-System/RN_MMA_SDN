@@ -1,134 +1,103 @@
 /**
- * Vehicle API Service
+ * VehicleService
+ * Auto-generated from OpenAPI spec
  */
 
 import ApiClient from '@/src/services/api.client';
-import { API_ENDPOINTS } from '@/src/config/api.config';
-import type {
-  VehicleWithPricingAndStation,
-  PaginatedResponse,
-  ApiResponse,
-  VehicleQueryParams,
-  CreateVehicleDto,
-  UpdateVehicleDto,
-} from '@/src/types/api.types';
 
 class VehicleService {
   /**
-   * Get list vehicles với pagination
+   * create
    */
-  async getVehicles(
-    params?: VehicleQueryParams
-  ): Promise<PaginatedResponse<VehicleWithPricingAndStation>> {
+  async create(data: any): Promise<any> {
     try {
-      return await ApiClient.get(API_ENDPOINTS.VEHICLE.LIST, { params });
+      return await ApiClient.post(`/vehicle`, data);
     } catch (error) {
-      console.error('Get vehicles error:', error);
+      console.error('create error:', error);
       throw error;
     }
   }
 
   /**
-   * Get vehicle by ID
+   * findAll
    */
-  async getVehicleById(id: string): Promise<VehicleWithPricingAndStation> {
+  async findAll(params?: any): Promise<any> {
     try {
-      const response = await ApiClient.get<ApiResponse<VehicleWithPricingAndStation>>(
-        API_ENDPOINTS.VEHICLE.BY_ID(id)
-      );
-      return response.data;
+      return await ApiClient.get(`/vehicle`, { params });
     } catch (error) {
-      console.error('Get vehicle by ID error:', error);
+      console.error('findAll error:', error);
       throw error;
     }
   }
 
   /**
-   * Create new vehicle
+   * findOne
    */
-  async createVehicle(data: CreateVehicleDto): Promise<any> {
+  async findOne(id: string): Promise<any> {
     try {
-      const response = await ApiClient.post<ApiResponse>(
-        API_ENDPOINTS.VEHICLE.CREATE,
-        data
-      );
-      return response.data;
+      return await ApiClient.get(`/vehicle/${id}`);
     } catch (error) {
-      console.error('Create vehicle error:', error);
+      console.error('findOne error:', error);
       throw error;
     }
   }
 
   /**
-   * Update vehicle
+   * update
    */
-  async updateVehicle(id: string, data: UpdateVehicleDto): Promise<any> {
+  async update(id: string, data: any): Promise<any> {
     try {
-      const response = await ApiClient.put<ApiResponse>(
-        API_ENDPOINTS.VEHICLE.UPDATE(id),
-        data
-      );
-      return response.data;
+      return await ApiClient.put(`/vehicle/${id}`, data);
     } catch (error) {
-      console.error('Update vehicle error:', error);
+      console.error('update error:', error);
       throw error;
     }
   }
 
   /**
-   * Soft delete vehicle
+   * hardDelete
    */
-  async softDeleteVehicle(id: string): Promise<void> {
+  async hardDelete(id: string): Promise<any> {
     try {
-      await ApiClient.patch(API_ENDPOINTS.VEHICLE.SOFT_DELETE(id));
+      return await ApiClient.delete(`/vehicle/${id}`);
     } catch (error) {
-      console.error('Soft delete vehicle error:', error);
+      console.error('hardDelete error:', error);
       throw error;
     }
   }
 
   /**
-   * Hard delete vehicle
+   * changeStatus
    */
-  async hardDeleteVehicle(id: string): Promise<void> {
+  async changeStatus(id: string, data: any): Promise<any> {
     try {
-      await ApiClient.delete(API_ENDPOINTS.VEHICLE.HARD_DELETE(id));
+      return await ApiClient.patch(`/vehicle/change-status/${id}`, data);
     } catch (error) {
-      console.error('Hard delete vehicle error:', error);
+      console.error('changeStatus error:', error);
       throw error;
     }
   }
 
   /**
-   * Search vehicles by brand (make)
+   * restore
    */
-  async searchByBrand(brand: string, params?: VehicleQueryParams): Promise<PaginatedResponse<VehicleWithPricingAndStation>> {
+  async restore(id: string): Promise<any> {
     try {
-      return await ApiClient.get(API_ENDPOINTS.VEHICLE.LIST, {
-        params: {
-          ...params,
-          search: brand,
-        },
-      });
+      return await ApiClient.patch(`/vehicle/restore/${id}`, data);
     } catch (error) {
-      console.error('Search vehicles by brand error:', error);
+      console.error('restore error:', error);
       throw error;
     }
   }
 
   /**
-   * Get available vehicles
+   * softDelete
    */
-  async getAvailableVehicles(params?: VehicleQueryParams): Promise<PaginatedResponse<VehicleWithPricingAndStation>> {
+  async softDelete(id: string): Promise<any> {
     try {
-      return await ApiClient.get(API_ENDPOINTS.VEHICLE.LIST, {
-        params: {
-          ...params,
-          is_active: true,
-        },
-      });
+      return await ApiClient.patch(`/vehicle/soft-delete/${id}`, data);
     } catch (error) {
-      console.error('Get available vehicles error:', error);
+      console.error('softDelete error:', error);
       throw error;
     }
   }

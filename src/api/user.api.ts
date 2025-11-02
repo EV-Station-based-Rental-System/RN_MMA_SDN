@@ -1,55 +1,103 @@
 /**
- * User API Service
+ * UserService
+ * Auto-generated from OpenAPI spec
  */
 
 import ApiClient from '@/src/services/api.client';
-import { API_ENDPOINTS } from '@/src/config/api.config';
-import type {
-  User,
-  ApiResponse,
-  UpdateRenterDto,
-} from '@/src/types/api.types';
 
 class UserService {
   /**
-   * Get user by ID
+   * findAllUser
    */
-  async getUserById(id: string): Promise<User> {
+  async findAllUser(params?: any): Promise<any> {
     try {
-      const response = await ApiClient.get<ApiResponse<User>>(
-        API_ENDPOINTS.USERS.BY_ID(id)
-      );
-      return response.data;
+      return await ApiClient.get(`/users/renter`, { params });
     } catch (error) {
-      console.error('Get user by ID error:', error);
+      console.error('findAllUser error:', error);
       throw error;
     }
   }
 
   /**
-   * Update renter profile
+   * findAllStaff
    */
-  async updateRenter(id: string, data: UpdateRenterDto): Promise<User> {
+  async findAllStaff(params?: any): Promise<any> {
     try {
-      const response = await ApiClient.put<ApiResponse<User>>(
-        API_ENDPOINTS.USERS.UPDATE_RENTER(id),
-        data
-      );
-      return response.data;
+      return await ApiClient.get(`/users/staff`, { params });
     } catch (error) {
-      console.error('Update renter error:', error);
+      console.error('findAllStaff error:', error);
       throw error;
     }
   }
 
   /**
-   * Get current user profile
+   * findOne
    */
-  async getCurrentUser(userId: string): Promise<User> {
+  async findOne(id: string): Promise<any> {
     try {
-      return await this.getUserById(userId);
+      return await ApiClient.get(`/users/${id}`);
     } catch (error) {
-      console.error('Get current user error:', error);
+      console.error('findOne error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * hardDelete
+   */
+  async hardDelete(id: string): Promise<any> {
+    try {
+      return await ApiClient.delete(`/users/${id}`);
+    } catch (error) {
+      console.error('hardDelete error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * updateRenter
+   */
+  async updateRenter(id: string, data: any): Promise<any> {
+    try {
+      return await ApiClient.put(`/users/update-renter/${id}`, data);
+    } catch (error) {
+      console.error('updateRenter error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * updateStaff
+   */
+  async updateStaff(id: string, data: any): Promise<any> {
+    try {
+      return await ApiClient.put(`/users/update-staff/${id}`, data);
+    } catch (error) {
+      console.error('updateStaff error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * softDelete
+   */
+  async softDelete(id: string): Promise<any> {
+    try {
+      return await ApiClient.patch(`/users/soft-delete/${id}`, data);
+    } catch (error) {
+      console.error('softDelete error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * restore
+   */
+  async restore(id: string): Promise<any> {
+    try {
+      return await ApiClient.patch(`/users/restore/${id}`, data);
+    } catch (error) {
+      console.error('restore error:', error);
       throw error;
     }
   }

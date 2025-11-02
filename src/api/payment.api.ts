@@ -1,22 +1,19 @@
 /**
- * Payment API Service
+ * PaymentService
+ * Auto-generated from OpenAPI spec
  */
 
 import ApiClient from '@/src/services/api.client';
-import { API_ENDPOINTS } from '@/src/config/api.config';
-import type { ApiResponse } from '@/src/types/api.types';
 
 class PaymentService {
   /**
-   * Confirm payment by cash
+   * confirmBookingByCash
    */
-  async confirmCashPayment(bookingId: string): Promise<void> {
+  async confirmBookingByCash(id: string): Promise<any> {
     try {
-      await ApiClient.patch<ApiResponse>(
-        API_ENDPOINTS.PAYMENT.CONFIRM_CASH(bookingId)
-      );
+      return await ApiClient.patch(`/payments/confirm-cash/${id}`, data);
     } catch (error) {
-      console.error('Confirm cash payment error:', error);
+      console.error('confirmBookingByCash error:', error);
       throw error;
     }
   }

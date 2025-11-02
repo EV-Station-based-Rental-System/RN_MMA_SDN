@@ -1,88 +1,91 @@
 /**
- * Station API Service
+ * StationService
+ * Auto-generated from OpenAPI spec
  */
 
 import ApiClient from '@/src/services/api.client';
-import { API_ENDPOINTS } from '@/src/config/api.config';
-import type {
-  Station,
-  StationQueryParams,
-  PaginatedResponse,
-  ApiResponse,
-  CreateStationDto,
-  UpdateStationDto,
-} from '@/src/types/api.types';
 
 class StationService {
   /**
-   * Get all stations
+   * create
    */
-  async getStations(params?: StationQueryParams): Promise<PaginatedResponse<Station>> {
+  async create(data: any): Promise<any> {
     try {
-      return await ApiClient.get(API_ENDPOINTS.STATION.LIST, { params });
+      return await ApiClient.post(`/station`, data);
     } catch (error) {
-      console.error('Get stations error:', error);
+      console.error('create error:', error);
       throw error;
     }
   }
 
   /**
-   * Get station by ID
+   * findAll
    */
-  async getStationById(id: string): Promise<Station> {
+  async findAll(params?: any): Promise<any> {
     try {
-      const response = await ApiClient.get<ApiResponse<Station>>(
-        API_ENDPOINTS.STATION.BY_ID(id)
-      );
-      return response.data;
+      return await ApiClient.get(`/station`, { params });
     } catch (error) {
-      console.error('Get station by ID error:', error);
+      console.error('findAll error:', error);
       throw error;
     }
   }
 
   /**
-   * Create new station
+   * findOne
    */
-  async createStation(data: CreateStationDto): Promise<Station> {
+  async findOne(id: string): Promise<any> {
     try {
-      const response = await ApiClient.post<ApiResponse<Station>>(
-        API_ENDPOINTS.STATION.CREATE,
-        data
-      );
-      return response.data;
+      return await ApiClient.get(`/station/${id}`);
     } catch (error) {
-      console.error('Create station error:', error);
+      console.error('findOne error:', error);
       throw error;
     }
   }
 
   /**
-   * Update station
+   * update
    */
-  async updateStation(id: string, data: UpdateStationDto): Promise<Station> {
+  async update(id: string, data: any): Promise<any> {
     try {
-      const response = await ApiClient.put<ApiResponse<Station>>(
-        API_ENDPOINTS.STATION.UPDATE(id),
-        data
-      );
-      return response.data;
+      return await ApiClient.put(`/station/${id}`, data);
     } catch (error) {
-      console.error('Update station error:', error);
+      console.error('update error:', error);
       throw error;
     }
   }
 
   /**
-   * Get active stations
+   * hardDelete
    */
-  async getActiveStations(): Promise<PaginatedResponse<Station>> {
+  async hardDelete(id: string): Promise<any> {
     try {
-      return await ApiClient.get(API_ENDPOINTS.STATION.LIST, {
-        params: { is_active: true },
-      });
+      return await ApiClient.delete(`/station/${id}`);
     } catch (error) {
-      console.error('Get active stations error:', error);
+      console.error('hardDelete error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * restore
+   */
+  async restore(id: string): Promise<any> {
+    try {
+      return await ApiClient.patch(`/station/restore/${id}`, data);
+    } catch (error) {
+      console.error('restore error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * softDelete
+   */
+  async softDelete(id: string): Promise<any> {
+    try {
+      return await ApiClient.patch(`/station/soft-delete/${id}`, data);
+    } catch (error) {
+      console.error('softDelete error:', error);
       throw error;
     }
   }

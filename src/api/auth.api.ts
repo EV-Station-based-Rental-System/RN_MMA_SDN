@@ -1,165 +1,93 @@
 /**
- * Auth API Service
+ * AuthService
+ * Auto-generated from OpenAPI spec
  */
 
 import ApiClient from '@/src/services/api.client';
-import StorageService from '@/src/services/storage.service';
-import { API_ENDPOINTS } from '@/src/config/api.config';
-import type {
-  LoginDto,
-  RenterDto,
-  StaffDto,
-  AdminDto,
-  SendOtpDto,
-  VerifyOtpDto,
-  ResetPasswordDto,
-  LoginResponse,
-  ApiResponse,
-} from '@/src/types/api.types';
 
 class AuthService {
   /**
-   * Login
+   * login
    */
-  async login(credentials: LoginDto): Promise<string> {
+  async login(data: any): Promise<any> {
     try {
-      const response = await ApiClient.post<LoginResponse>(
-        API_ENDPOINTS.AUTH.LOGIN,
-        credentials
-      );
-
-      const token = response.data.access_token;
-      
-      // Lưu token vào storage
-      await StorageService.setAccessToken(token);
-
-      return token;
+      return await ApiClient.post(`/auth/login`, data);
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('login error:', error);
       throw error;
     }
   }
 
   /**
-   * Register Renter
+   * createRenter
    */
-  async registerRenter(data: RenterDto): Promise<void> {
+  async createRenter(data: any): Promise<any> {
     try {
-      await ApiClient.post<ApiResponse>(
-        API_ENDPOINTS.AUTH.REGISTER_RENTER,
-        data
-      );
+      return await ApiClient.post(`/auth/register/renter`, data);
     } catch (error) {
-      console.error('Register renter error:', error);
+      console.error('createRenter error:', error);
       throw error;
     }
   }
 
   /**
-   * Register Staff
+   * createStaff
    */
-  async registerStaff(data: StaffDto): Promise<void> {
+  async createStaff(data: any): Promise<any> {
     try {
-      await ApiClient.post<ApiResponse>(
-        API_ENDPOINTS.AUTH.REGISTER_STAFF,
-        data
-      );
+      return await ApiClient.post(`/auth/register/staff`, data);
     } catch (error) {
-      console.error('Register staff error:', error);
+      console.error('createStaff error:', error);
       throw error;
     }
   }
 
   /**
-   * Register Admin
+   * createAdmin
    */
-  async registerAdmin(data: AdminDto): Promise<void> {
+  async createAdmin(data: any): Promise<any> {
     try {
-      await ApiClient.post<ApiResponse>(
-        API_ENDPOINTS.AUTH.REGISTER_ADMIN,
-        data
-      );
+      return await ApiClient.post(`/auth/register/admin`, data);
     } catch (error) {
-      console.error('Register admin error:', error);
+      console.error('createAdmin error:', error);
       throw error;
     }
   }
 
   /**
-   * Send OTP
+   * sendOtp
    */
-  async sendOtp(data: SendOtpDto): Promise<void> {
+  async sendOtp(data: any): Promise<any> {
     try {
-      await ApiClient.post<ApiResponse>(
-        API_ENDPOINTS.AUTH.SEND_OTP,
-        data
-      );
+      return await ApiClient.post(`/auth/send-otp`, data);
     } catch (error) {
-      console.error('Send OTP error:', error);
+      console.error('sendOtp error:', error);
       throw error;
     }
   }
 
   /**
-   * Verify Email với OTP
+   * verifyEmail
    */
-  async verifyEmail(data: VerifyOtpDto): Promise<void> {
+  async verifyEmail(data: any): Promise<any> {
     try {
-      await ApiClient.post<ApiResponse>(
-        API_ENDPOINTS.AUTH.VERIFY_EMAIL,
-        data
-      );
+      return await ApiClient.post(`/auth/verify-email`, data);
     } catch (error) {
-      console.error('Verify email error:', error);
+      console.error('verifyEmail error:', error);
       throw error;
     }
   }
 
   /**
-   * Reset Password
+   * resetPassword
    */
-  async resetPassword(data: ResetPasswordDto): Promise<void> {
+  async resetPassword(data: any): Promise<any> {
     try {
-      await ApiClient.post<ApiResponse>(
-        API_ENDPOINTS.AUTH.RESET_PASSWORD,
-        data
-      );
+      return await ApiClient.post(`/auth/reset-password`, data);
     } catch (error) {
-      console.error('Reset password error:', error);
+      console.error('resetPassword error:', error);
       throw error;
     }
-  }
-
-  /**
-   * Logout - Clear local storage only (no API call needed)
-   */
-  async logout(): Promise<void> {
-    try {
-      console.log('🚪 Logging out user...');
-      
-      // Clear all local storage (token + user data)
-      await StorageService.clearAll();
-      
-      console.log('✅ Token and user data cleared');
-    } catch (error) {
-      console.error('❌ Logout error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Check if user is authenticated
-   */
-  async isAuthenticated(): Promise<boolean> {
-    const token = await StorageService.getAccessToken();
-    return !!token;
-  }
-
-  /**
-   * Get current access token
-   */
-  async getToken(): Promise<string | null> {
-    return await StorageService.getAccessToken();
   }
 }
 

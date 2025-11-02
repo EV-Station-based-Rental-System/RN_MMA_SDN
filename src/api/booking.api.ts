@@ -1,105 +1,79 @@
 /**
- * Booking API Service
+ * BookingService
+ * Auto-generated from OpenAPI spec
  */
 
 import ApiClient from '@/src/services/api.client';
-import { API_ENDPOINTS } from '@/src/config/api.config';
-import type {
-  CreateBookingDto,
-  CreateBookingResponse,
-  Booking,
-  BookingQueryParams,
-  PaginatedResponse,
-  ApiResponse,
-  ChangeStatusBookingDto,
-} from '@/src/types/api.types';
 
 class BookingService {
   /**
-   * Create new booking
+   * createBooking
    */
-  async createBooking(data: CreateBookingDto): Promise<CreateBookingResponse> {
+  async createBooking(data: any): Promise<any> {
     try {
-      return await ApiClient.post<CreateBookingResponse>(
-        API_ENDPOINTS.BOOKING.CREATE,
-        data
-      );
+      return await ApiClient.post(`/bookings`, data);
     } catch (error) {
-      console.error('Create booking error:', error);
+      console.error('createBooking error:', error);
       throw error;
     }
   }
 
   /**
-   * Get all bookings với pagination và filters
+   * getAllBookings
    */
-  async getBookings(params?: BookingQueryParams): Promise<PaginatedResponse<Booking>> {
+  async getAllBookings(params?: any): Promise<any> {
     try {
-      return await ApiClient.get(API_ENDPOINTS.BOOKING.LIST, { params });
+      return await ApiClient.get(`/bookings`, { params });
     } catch (error) {
-      console.error('Get bookings error:', error);
+      console.error('getAllBookings error:', error);
       throw error;
     }
   }
 
   /**
-   * Get booking by ID
+   * confirmBooking
    */
-  async getBookingById(id: string): Promise<Booking> {
+  async confirmBooking(id: string, data: any): Promise<any> {
     try {
-      const response = await ApiClient.get<ApiResponse<Booking>>(
-        API_ENDPOINTS.BOOKING.BY_ID(id)
-      );
-      return response.data;
+      return await ApiClient.patch(`/bookings/confirm/${id}`, data);
     } catch (error) {
-      console.error('Get booking by ID error:', error);
+      console.error('confirmBooking error:', error);
       throw error;
     }
   }
 
   /**
-   * Confirm booking (Staff only)
+   * getBookingsByRenter
    */
-  async confirmBooking(id: string, data: ChangeStatusBookingDto): Promise<Booking> {
+  async getBookingsByRenter(params?: any): Promise<any> {
     try {
-      const response = await ApiClient.patch<ApiResponse<Booking>>(
-        API_ENDPOINTS.BOOKING.CONFIRM(id),
-        data
-      );
-      return response.data;
+      return await ApiClient.get(`/bookings/history-renter`, { params });
     } catch (error) {
-      console.error('Confirm booking error:', error);
+      console.error('getBookingsByRenter error:', error);
       throw error;
     }
   }
 
   /**
-   * Get my bookings (current user)
+   * getBookingById
    */
-  async getMyBookings(params?: BookingQueryParams): Promise<PaginatedResponse<Booking>> {
+  async getBookingById(id: string): Promise<any> {
     try {
-      return await ApiClient.get(API_ENDPOINTS.BOOKING.LIST, { params });
+      return await ApiClient.get(`/bookings/${id}`);
     } catch (error) {
-      console.error('Get my bookings error:', error);
+      console.error('getBookingById error:', error);
       throw error;
     }
   }
 
   /**
-   * Cancel booking
+   * cancelBooking
    */
-  async cancelBooking(id: string, reason: string): Promise<Booking> {
+  async cancelBooking(id: string): Promise<any> {
     try {
-      const response = await ApiClient.patch<ApiResponse<Booking>>(
-        API_ENDPOINTS.BOOKING.CONFIRM(id),
-        {
-          verification_status: 'rejected_other',
-          cancel_reason: reason,
-        }
-      );
-      return response.data;
+      return await ApiClient.patch(`/bookings/cancel/${id}`, data);
     } catch (error) {
-      console.error('Cancel booking error:', error);
+      console.error('cancelBooking error:', error);
       throw error;
     }
   }

@@ -244,22 +244,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/vehicle/with-station-and-pricing': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: operations['VehicleController_createWithStationAndPricing'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/vehicle/{id}': {
     parameters: {
       query?: never;
@@ -276,6 +260,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/vehicle/change-status/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['VehicleController_changeStatus'];
+    trace?: never;
+  };
+  '/vehicle/restore/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['VehicleController_restore'];
+    trace?: never;
+  };
   '/vehicle/soft-delete/{id}': {
     parameters: {
       query?: never;
@@ -290,54 +306,6 @@ export interface paths {
     options?: never;
     head?: never;
     patch: operations['VehicleController_softDelete'];
-    trace?: never;
-  };
-  '/pricings/vehicle/{vehicleId}/history': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations['PricingController_getPricingHistoryByVehicle'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/pricings': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: operations['PricingController_create'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/pricings/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put: operations['PricingController_update'];
-    post?: never;
-    delete: operations['PricingController_remove'];
-    options?: never;
-    head?: never;
-    patch?: never;
     trace?: never;
   };
   '/kycs': {
@@ -420,6 +388,22 @@ export interface paths {
     patch: operations['BookingController_confirmBooking'];
     trace?: never;
   };
+  '/bookings/history-renter': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['BookingController_getBookingsByRenter'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/bookings/{id}': {
     parameters: {
       query?: never;
@@ -434,6 +418,22 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  '/bookings/cancel/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['BookingController_cancelBooking'];
     trace?: never;
   };
   '/payments/confirm-cash/{id}': {
@@ -628,6 +628,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/station/restore/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['StationController_restore'];
+    trace?: never;
+  };
   '/station/soft-delete/{id}': {
     parameters: {
       query?: never;
@@ -740,8 +756,8 @@ export interface components {
        */
       phone?: string;
       /**
-       * @description Driver license number of the renter (optional)
-       * @example 123456789
+       * @description Address of the renter (optional)
+       * @example 123 FPT
        */
       address?: string;
       /**
@@ -842,18 +858,68 @@ export interface components {
       /** @enum {string} */
       role: 'unknown' | 'renter' | 'staff' | 'admin';
       is_active: boolean;
-      phone?: string;
+      phone: string;
+    };
+    Kycs: {
+      /** @description Renter ID reference */
+      renter_id: string;
+      /**
+       * @description Type of KYC document
+       * @example driver_license
+       * @enum {string}
+       */
+      type: 'national_id' | 'passport' | 'driver_license' | 'other';
+      /** @description Document identification number */
+      document_number: string;
+      /**
+       * Format: date-time
+       * @description Document expiry date
+       */
+      expiry_date?: string;
+      /**
+       * @description KYC verification status
+       * @example submitted
+       * @enum {string}
+       */
+      status: 'submitted' | 'approved' | 'rejected' | 'expired';
+      /**
+       * Format: date-time
+       * @description Submission timestamp
+       */
+      submitted_at: string;
+      /**
+       * Format: date-time
+       * @description Verification timestamp
+       */
+      verified_at?: string;
+    };
+    Station: {
+      name: string;
+      address: string;
+      latitude?: number;
+      longitude?: number;
+      is_active: boolean;
     };
     UserWithRoleExtra: {
+      /** @description Role-specific extra information (Renter, Staff, or Admin) */
+      roleExtra?:
+        | (
+            | components['schemas']['Renter']
+            | components['schemas']['Staff']
+            | components['schemas']['Admin']
+          )
+        | null;
+      /** @description KYC information (only populated for renters if exists) */
+      kycs?: components['schemas']['Kycs'] | null;
       email: string;
       password: string;
       full_name: string;
       /** @enum {string} */
       role: 'unknown' | 'renter' | 'staff' | 'admin';
       is_active: boolean;
-      phone?: string;
+      phone: string;
     };
-    '1e062cf0f697a791a137f': {
+    '1b24645674a767b447a12': {
       data: components['schemas']['UserWithRoleExtra'][];
       /**
        * @example {
@@ -865,7 +931,7 @@ export interface components {
        */
       meta: Record<string, never>;
     };
-    e062cf0f697a791a137f2: {
+    b24645674a767b447a124: {
       data: components['schemas']['Staff'][];
       /**
        * @example {
@@ -877,7 +943,7 @@ export interface components {
        */
       meta: Record<string, never>;
     };
-    '062cf0f697a791a137f27': {
+    '24645674a767b447a1248': {
       data: components['schemas']['UserWithRoleExtra'] | null;
     };
     UpdateRenterDto: {
@@ -903,7 +969,7 @@ export interface components {
        */
       date_of_birth?: string;
     };
-    '62cf0f697a791a137f27c': {
+    '4645674a767b447a1248f': {
       data: components['schemas']['UserWithRoleExtra'] | null;
     };
     UpdateStaffDto: {
@@ -928,7 +994,7 @@ export interface components {
        */
       station_id?: string;
     };
-    '2cf0f697a791a137f27cb': {
+    '645674a767b447a1248fd': {
       data: components['schemas']['UserWithRoleExtra'] | null;
     };
     Vehicle: {
@@ -945,287 +1011,25 @@ export interface components {
       current_battery_capacity_kwh?: number;
       current_mileage?: number;
       /** @enum {string} */
-      status?: 'maintain' | 'available' | 'booked' | 'pending_booking' | 'rented';
-    };
-    Station: {
-      name: string;
-      address: string;
-      latitude?: number;
-      longitude?: number;
-      is_active: boolean;
-    };
-    Pricing: {
-      vehicle_id: components['schemas']['ObjectId'];
+      status: 'maintain' | 'available' | 'booked' | 'pending_booking';
       price_per_hour: number;
       price_per_day?: number;
-      /** Format: date-time */
-      effective_from: string;
-      /** Format: date-time */
-      effective_to?: string;
       deposit_amount: number;
-      late_return_fee_per_hour?: number;
-      mileage_limit_per_day?: number;
-      excess_mileage_fee?: number;
+      image_kit_file_id?: string;
     };
-    VehicleWithPricingAndStation: {
-      station_id?: components['schemas']['ObjectId'];
-      make: string;
-      model: string;
-      model_year: number;
-      category: string;
-      battery_capacity_kwh?: number;
-      range_km?: number;
-      vin_number?: string;
-      img_url?: string;
-      is_active: boolean;
-      current_battery_capacity_kwh?: number;
-      current_mileage?: number;
-      /** @enum {string} */
-      status?: 'maintain' | 'available' | 'booked' | 'pending_booking' | 'rented';
-      station?: components['schemas']['Station'];
-      pricing?: components['schemas']['Pricing'];
-    };
-    CreateVehicleDto: {
-      /**
-       * @description Brand Car
-       * @example Tesla
-       */
-      make: string;
-      /**
-       * @description Model
-       * @example Model 3
-       */
-      model: string;
-      /**
-       * @description Year of Manufacture
-       * @example 2025
-       */
-      model_year: number;
-      /**
-       * @description Vehicle Type
-       * @default EV
-       * @example EV
-       */
-      category: string;
-      /**
-       * @description Battery Capacity (kWh)
-       * @example 75
-       */
-      battery_capacity_kwh?: number;
-      /**
-       * @description Maximum Range (km)
-       * @example 500
-       */
-      range_km?: number;
-      /**
-       * @description VIN Number
-       * @example 5YJ3E1EA7KF317XXX
-       */
-      vin_number?: string;
-      /**
-       * @description Image URL
-       * @example http://example.com/car.jpg
-       */
-      img_url?: string;
-    };
-    cf0f697a791a137f27cb1: {
+    '5674a767b447a1248fd43': {
       data: components['schemas']['Vehicle'] | null;
     };
-    CreatePricingWithoutVehicleIdDto: {
-      /**
-       * @description Price per hour (VND)
-       * @example 30000
-       */
-      price_per_hour: number;
-      /**
-       * @description Price per day (VND)
-       * @example 500000
-       */
-      price_per_day?: number;
-      /**
-       * @description Effective from
-       * @example 2025-10-20T00:00:00.000Z
-       */
-      effective_from: string;
-      /**
-       * @description Effective to
-       * @example 2025-12-31T23:59:59.000Z
-       */
-      effective_to?: string;
-      /**
-       * @description Deposit amount (VND)
-       * @example 1000000
-       */
-      deposit_amount: number;
-      /**
-       * @description Late return fee per hour (VND)
-       * @example 50000
-       */
-      late_return_fee_per_hour?: number;
-      /**
-       * @description Mileage limit per day (km)
-       * @example 200
-       */
-      mileage_limit_per_day?: number;
-      /**
-       * @description Excess mileage fee (VND)
-       * @example 4000
-       */
-      excess_mileage_fee?: number;
-    };
-    CreateVehicleWithStationAndPricingDto: {
-      /** @description Vehicle details */
-      vehicle: components['schemas']['CreateVehicleDto'];
-      /**
-       * @description Station ID
-       * @example 507f1f77bcf86cd799439011
-       */
-      station_id: string;
-      /** @description Pricing details */
-      pricing: components['schemas']['CreatePricingWithoutVehicleIdDto'];
-    };
-    f0f697a791a137f27cb10: {
-      data: components['schemas']['VehicleWithPricingAndStation'] | null;
-    };
-    '0f697a791a137f27cb102': {
-      data: components['schemas']['VehicleWithPricingAndStation'][];
-      /**
-       * @example {
-       *       "total": 100,
-       *       "page": 1,
-       *       "take": 10,
-       *       "totalPages": 10
-       *     }
-       */
-      meta: Record<string, never>;
-    };
-    f697a791a137f27cb102d: {
-      data: components['schemas']['VehicleWithPricingAndStation'] | null;
-    };
-    UpdateVehicleDto: {
-      /**
-       * @description Brand Car
-       * @example Tesla
-       */
-      make?: string;
-      /**
-       * @description Model
-       * @example Model 3
-       */
-      model?: string;
-      /**
-       * @description Year of Manufacture
-       * @example 2025
-       */
-      model_year?: number;
-      /**
-       * @description Vehicle Type
-       * @default EV
-       * @example EV
-       */
-      category: string;
-      /**
-       * @description Battery Capacity (kWh)
-       * @example 75
-       */
-      battery_capacity_kwh?: number;
-      /**
-       * @description Maximum Range (km)
-       * @example 500
-       */
-      range_km?: number;
-      /**
-       * @description VIN Number
-       * @example 5YJ3E1EA7KF317XXX
-       */
-      vin_number?: string;
-      /**
-       * @description Image URL
-       * @example http://example.com/car.jpg
-       */
-      img_url?: string;
-    };
-    '697a791a137f27cb102df': {
+    '74a767b447a1248fd4370': {
       data: components['schemas']['Vehicle'] | null;
     };
-    '91a137f27cb102df1c400': {
-      data: components['schemas']['Pricing'][];
+    ChangeStatusDto: {
       /**
-       * @example {
-       *       "total": 100,
-       *       "page": 1,
-       *       "take": 10,
-       *       "totalPages": 10
-       *     }
+       * @description Trạng thái mới của thuê xe
+       * @example reserved
+       * @enum {string}
        */
-      meta: Record<string, never>;
-    };
-    CreatePricingDto: {
-      /**
-       * @description Vehicle ID
-       * @example vehicle_id
-       */
-      vehicle_id: string;
-      /**
-       * @description Price per hour (VND)
-       * @example 30000
-       */
-      price_per_hour: number;
-      /**
-       * @description Price per day (VND)
-       * @example 500000
-       */
-      price_per_day?: number;
-      /**
-       * @description Effective from
-       * @example 2025-10-20T00:00:00.000Z
-       */
-      effective_from: string;
-      /**
-       * @description Effective to
-       * @example 2025-12-31T23:59:59.000Z
-       */
-      effective_to?: string;
-      /**
-       * @description Deposit amount (VND)
-       * @example 1000000
-       */
-      deposit_amount: number;
-      /**
-       * @description Late return fee per hour (VND)
-       * @example 50000
-       */
-      late_return_fee_per_hour?: number;
-      /**
-       * @description Mileage limit per day (km)
-       * @example 200
-       */
-      mileage_limit_per_day?: number;
-      /**
-       * @description Excess mileage fee (VND)
-       * @example 4000
-       */
-      excess_mileage_fee?: number;
-    };
-    '1a137f27cb102df1c4001': {
-      data: components['schemas']['Pricing'] | null;
-    };
-    a137f27cb102df1c40015: {
-      data: components['schemas']['Pricing'] | null;
-    };
-    Kycs: {
-      renter_id: components['schemas']['ObjectId'];
-      /** @enum {string} */
-      type: 'national_id' | 'passport' | 'driver_license' | 'other';
-      document_number: string;
-      /** Format: date-time */
-      expiry_date?: string;
-      /** @enum {string} */
-      status: 'submitted' | 'approved' | 'rejected' | 'expired';
-      /** Format: date-time */
-      submitted_at: string;
-      /** Format: date-time */
-      verified_at?: string;
+      status: 'reserved' | 'in_progress' | 'completed' | 'late' | 'cancelled';
     };
     CreateKycsDto: {
       /**
@@ -1245,7 +1049,7 @@ export interface components {
        */
       expiry_date?: string;
     };
-    '137f27cb102df1c400155': {
+    '7b447a1248fd43706a921': {
       data: components['schemas']['Kycs'] | null;
     };
     UpdateKycsDto: {
@@ -1266,14 +1070,14 @@ export interface components {
        */
       expiry_date?: string;
     };
-    '37f27cb102df1c400155b': {
+    b447a1248fd43706a9216: {
       data: components['schemas']['Kycs'] | null;
     };
     ChangeKycStatusDto: {
       /** @enum {string} */
       status: 'submitted' | 'approved' | 'rejected' | 'expired';
     };
-    '7f27cb102df1c400155bc': {
+    '447a1248fd43706a9216d': {
       data: components['schemas']['Kycs'] | null;
     };
     Booking: {
@@ -1294,6 +1098,8 @@ export interface components {
       total_booking_fee_amount: number;
       deposit_fee_amount: number;
       rental_fee_amount: number;
+      /** @enum {string} */
+      rental_until: 'hours' | 'days';
     };
     CreateBookingDto: {
       /**
@@ -1322,6 +1128,12 @@ export interface components {
        * @example 2025-10-25T10:00:00.000Z
        */
       expected_return_datetime: string;
+      /**
+       * @description Unit of rental duration (hours or days)
+       * @example hours
+       * @enum {string}
+       */
+      rental_until: 'hours' | 'days';
     };
     ChangeStatusBookingDto: {
       /**
@@ -1336,22 +1148,207 @@ export interface components {
        */
       cancel_reason?: string;
     };
-    f27cb102df1c400155bc6: {
+    '47a1248fd43706a9216d4': {
       data: components['schemas']['Booking'] | null;
     };
-    '27cb102df1c400155bc67': {
-      data: components['schemas']['Booking'][];
+    UserInResponse: {
+      /** @example 6901a99d315708186850886c */
+      _id: string;
+      /** @example ttei8191@gmail.com */
+      email: string;
+      /** @example 123123123 */
+      password: string;
+      /** @example Chấn */
+      full_name: string;
       /**
-       * @example {
-       *       "total": 100,
-       *       "page": 1,
-       *       "take": 10,
-       *       "totalPages": 10
-       *     }
+       * @example renter
+       * @enum {string}
        */
-      meta: Record<string, never>;
+      role: 'unknown' | 'renter' | 'staff' | 'admin';
+      /** @example true */
+      is_active: boolean;
+      /**
+       * Format: date-time
+       * @example 2025-10-29T05:43:57.595Z
+       */
+      created_at: string;
+      /** @example 0 */
+      __v: number;
     };
-    '7cb102df1c400155bc670': {
+    RenterInResponse: {
+      /** @example 6901a99d315708186850886e */
+      _id: string;
+      /** @example 6901a99d315708186850886c */
+      user_id: string;
+      /** @example 123456789 */
+      address?: string;
+      /**
+       * Format: date-time
+       * @example 2004-12-28T00:00:00.000Z
+       */
+      date_of_birth?: string;
+      /** @example 0 */
+      risk_score?: number;
+      /**
+       * Format: date-time
+       * @example 2025-10-29T05:43:57.677Z
+       */
+      created_at: string;
+      /** @example 0 */
+      __v: number;
+      user: components['schemas']['UserInResponse'];
+    };
+    StaffInResponse: {
+      /** @example 6901a76d8e3f7ff9736ecbb6 */
+      _id: string;
+      /** @example 6901a76d8e3f7ff9736ecbb4 */
+      user_id: string;
+      /** @example 6901a7378e3f7ff9736ecbb0 */
+      station_id: string;
+      /** @example 661446 */
+      employee_code: string;
+      /** @example Staff */
+      position: string;
+      /**
+       * Format: date-time
+       * @example 2025-10-29T05:34:37.128Z
+       */
+      hire_date: string;
+      /**
+       * Format: date-time
+       * @example 2025-10-29T05:34:37.129Z
+       */
+      created_at: string;
+      /** @example 0 */
+      __v: number;
+      user: components['schemas']['UserInResponse'];
+    };
+    PaymentInResponse: {
+      /** @example 69035fca16c1c4f90ca908bf */
+      _id: string;
+      /** @example 69035fca16c1c4f90ca908b8 */
+      booking_id: string;
+      /**
+       * @example cash
+       * @enum {string}
+       */
+      method: 'unknown' | 'cash' | 'bank_transfer';
+      /**
+       * @example pending
+       * @enum {string}
+       */
+      status: 'paid' | 'refunded' | 'failed' | 'pending';
+      /** @example 2000000 */
+      amount_paid: number;
+      /** @example CASH_1761828810317 */
+      transaction_code?: string;
+      /**
+       * Format: date-time
+       * @example 2025-10-30T12:53:30.555Z
+       */
+      created_at: string;
+      /** @example 0 */
+      __v: number;
+    };
+    FeeInResponse: {
+      /** @example 69035fca16c1c4f90ca908bb */
+      _id: string;
+      /** @example 69035fca16c1c4f90ca908b8 */
+      booking_id: string;
+      /**
+       * @example rental_fee
+       * @enum {string}
+       */
+      type:
+        | 'rental_fee'
+        | 'deposit_fee'
+        | 'total_booking_fee'
+        | 'over_deposit_fee'
+        | 'late_return_fee'
+        | 'excess_mileage_fee'
+        | 'other';
+      /** @example Rental fee for 2 days */
+      description?: string;
+      /** @example 1000000 */
+      amount: number;
+      /** @example VND */
+      currency: string;
+      /**
+       * Format: date-time
+       * @example 2025-10-30T12:53:30.442Z
+       */
+      created_at: string;
+      /** @example 0 */
+      __v: number;
+    };
+    BookingListItemResponse: {
+      /** @example 69035fca16c1c4f90ca908b8 */
+      _id: string;
+      /** @example 6901a99d315708186850886e */
+      renter_id: string;
+      /** @example 69035f5716c1c4f90ca9089b */
+      vehicle_at_station_id: string;
+      /**
+       * Format: date-time
+       * @example 2025-10-30T10:00:00.000Z
+       */
+      rental_start_datetime: string;
+      /**
+       * Format: date-time
+       * @example 2025-11-01T10:00:00.000Z
+       */
+      expected_return_datetime?: string;
+      /**
+       * @example verified
+       * @enum {string}
+       */
+      status: 'pending_verification' | 'verified' | 'cancelled';
+      /**
+       * @example pending
+       * @enum {string}
+       */
+      verification_status: 'pending' | 'approved' | 'rejected_mismatch' | 'rejected_other';
+      /** @example 2000000 */
+      total_booking_fee_amount: number;
+      /** @example 1000000 */
+      deposit_fee_amount: number;
+      /** @example 1000000 */
+      rental_fee_amount: number;
+      /**
+       * Format: date-time
+       * @example 2025-10-30T12:53:30.318Z
+       */
+      created_at: string;
+      /** @example 0 */
+      __v: number;
+      renter: components['schemas']['RenterInResponse'];
+      /** @description May be empty object if not yet verified */
+      verified_by_staff?: components['schemas']['StaffInResponse'];
+      payments: components['schemas']['PaymentInResponse'][];
+      fees: components['schemas']['FeeInResponse'][];
+      /**
+       * Format: date-time
+       * @example 2025-10-30T09:07:24.256Z
+       */
+      verified_at?: string;
+      /** @example 6901a76d8e3f7ff9736ecbb6 */
+      verified_by_staff_id?: string;
+    };
+    BookingListMetaResponse: {
+      /** @example 3 */
+      total: number;
+      /** @example 1 */
+      page: number;
+      /** @example 10 */
+      take: number;
+      /** @example 1 */
+      totalPages: number;
+    };
+    BookingListResponse: {
+      data: components['schemas']['BookingListItemResponse'][];
+      meta: components['schemas']['BookingListMetaResponse'];
+    };
+    '7a1248fd43706a9216d48': {
       data: components['schemas']['Booking'] | null;
     };
     Payment: {
@@ -1359,41 +1356,9 @@ export interface components {
       /** @enum {string} */
       method: 'unknown' | 'cash' | 'bank_transfer';
       /** @enum {string} */
-      status: 'paid' | 'refunded' | 'pending';
+      status: 'paid' | 'refunded' | 'failed' | 'pending';
       amount_paid: number;
       transaction_code?: string;
-    };
-    Rental: {
-      booking_id: components['schemas']['ObjectId'];
-      vehicle_id: components['schemas']['ObjectId'];
-      /** Format: date-time */
-      pickup_datetime: string;
-      /** Format: date-time */
-      expected_return_datetime?: string;
-      /** Format: date-time */
-      actual_return_datetime?: string;
-      /** @enum {string} */
-      status: 'reserved' | 'in_progress' | 'completed' | 'late' | 'cancelled';
-      score: number | null;
-      comment?: string;
-      /** Format: date-time */
-      rated_at?: string;
-    };
-    ReturnRentalMapping: Record<string, never>;
-    cb102df1c400155bc6702: {
-      data: components['schemas']['ReturnRentalMapping'][];
-      /**
-       * @example {
-       *       "total": 100,
-       *       "page": 1,
-       *       "take": 10,
-       *       "totalPages": 10
-       *     }
-       */
-      meta: Record<string, never>;
-    };
-    b102df1c400155bc67026: {
-      data: components['schemas']['ReturnRentalMapping'] | null;
     };
     Inspection: {
       rental_id: components['schemas']['ObjectId'];
@@ -1448,13 +1413,13 @@ export interface components {
        */
       current_mileage: number;
     };
-    '102df1c400155bc670264': {
+    a1248fd43706a9216d48a: {
       data: components['schemas']['Inspection'] | null;
     };
-    '2df1c400155bc67026431': {
+    '248fd43706a9216d48ac2': {
       data: components['schemas']['ReportsPhoto'] | null;
     };
-    df1c400155bc670264311: {
+    '48fd43706a9216d48ac28': {
       data: string[] | null;
     };
     CompleteInspectionDto: {
@@ -1487,7 +1452,7 @@ export interface components {
        */
       over_deposit_fee_amount: number;
     };
-    f1c400155bc670264311a: {
+    '8fd43706a9216d48ac28b': {
       data: Record<string, never> | null;
     };
     Contract: {
@@ -1495,11 +1460,12 @@ export interface components {
       /** Format: date-time */
       completed_at?: string;
       document_url: string;
+      image_kit_file_id?: string;
     };
-    c400155bc670264311a09: {
+    d43706a9216d48ac28b28: {
       data: components['schemas']['Contract'] | null;
     };
-    '00155bc670264311a0976': {
+    '3706a9216d48ac28b2822': {
       data: components['schemas']['Contract'] | null;
     };
     CreateStationDto: {
@@ -1524,10 +1490,10 @@ export interface components {
        */
       longitude?: number;
     };
-    '97a791a137f27cb102df1': {
+    '4a767b447a1248fd43706': {
       data: components['schemas']['Station'] | null;
     };
-    '7a791a137f27cb102df1c': {
+    a767b447a1248fd43706a: {
       data: components['schemas']['Station'][];
       /**
        * @example {
@@ -1539,7 +1505,7 @@ export interface components {
        */
       meta: Record<string, never>;
     };
-    a791a137f27cb102df1c4: {
+    '767b447a1248fd43706a9': {
       data: components['schemas']['Station'] | null;
     };
     UpdateStationDto: {
@@ -1564,7 +1530,7 @@ export interface components {
        */
       longitude?: number;
     };
-    '791a137f27cb102df1c40': {
+    '67b447a1248fd43706a92': {
       data: components['schemas']['Station'] | null;
     };
   };
@@ -2133,12 +2099,13 @@ export interface operations {
         page?: number;
         /** @description Number of items per page */
         take?: number;
-        /** @description Field to sort by */
-        sortBy?: string;
         /** @description Sort direction */
         sortOrder?: 'ASC' | 'DESC';
         /** @description Search term to filter results */
         search?: string;
+        /** @description Field to sort by */
+        sortBy?: string;
+        statusKyc?: 'submitted' | 'approved' | 'rejected' | 'expired';
         is_active?: boolean;
       };
       header?: never;
@@ -2147,13 +2114,13 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description List of renter */
+      /** @description List of renters with populated roleExtra */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['1e062cf0f697a791a137f'];
+          'application/json': components['schemas']['1b24645674a767b447a12'];
         };
       };
       /** @description Invalid payload */
@@ -2219,13 +2186,13 @@ export interface operations {
         page?: number;
         /** @description Number of items per page */
         take?: number;
-        /** @description Field to sort by */
-        sortBy?: string;
         /** @description Sort direction */
         sortOrder?: 'ASC' | 'DESC';
         /** @description Search term to filter results */
         search?: string;
-        /** @description Role of the user */
+        /** @description Field to sort by */
+        sortBy?: string;
+        /** @description Position of the user */
         position?: string;
         /** @description Employee code of the user */
         employee_code?: string;
@@ -2244,7 +2211,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['e062cf0f697a791a137f2'];
+          'application/json': components['schemas']['b24645674a767b447a124'];
         };
       };
       /** @description Invalid payload */
@@ -2314,13 +2281,13 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description User details */
+      /** @description User details with populated roleExtra */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['062cf0f697a791a137f27'];
+          'application/json': components['schemas']['24645674a767b447a1248'];
         };
       };
       /** @description Invalid payload */
@@ -2470,13 +2437,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Renter updated */
+      /** @description Renter updated with populated roleExtra */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['62cf0f697a791a137f27c'];
+          'application/json': components['schemas']['4645674a767b447a1248f'];
         };
       };
       /** @description Invalid payload */
@@ -2550,13 +2517,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Staff updated */
+      /** @description Staff updated with populated roleExtra */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['2cf0f697a791a137f27cb'];
+          'application/json': components['schemas']['645674a767b447a1248fd'];
         };
       };
       /** @description Invalid payload */
@@ -2774,16 +2741,15 @@ export interface operations {
         page?: number;
         /** @description Number of items per page */
         take?: number;
-        /** @description Field to sort by */
-        sortBy?: string;
         /** @description Sort direction */
         sortOrder?: 'ASC' | 'DESC';
         /** @description Search term to filter results */
         search?: string;
         /** @description Year of the vehicle model */
-        model_year?: number;
+        sortBy?: string;
         /** @description Status of the vehicle (true = active) */
         is_active?: boolean;
+        model_year?: number;
       };
       header?: never;
       path?: never;
@@ -2791,14 +2757,11 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description List of vehicles */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          'application/json': components['schemas']['0f697a791a137f27cb102'];
-        };
+        content?: never;
       };
       /** @description Invalid payload */
       400: {
@@ -2865,7 +2828,40 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['CreateVehicleDto'];
+        'multipart/form-data': {
+          /** @example Tesla */
+          make: string;
+          /** @example Model 3 */
+          model: string;
+          /** @example 2025 */
+          model_year: number;
+          /** @example EV */
+          category: string;
+          /** @example 75 */
+          battery_capacity_kwh?: number;
+          /** @example 500 */
+          range_km?: number;
+          /** @example 5YJ3E1EA7KF317XXX */
+          vin_number: string;
+          /** @example station_id */
+          station_id: string;
+          /** @example 50000 */
+          price_per_hour: number;
+          /** @example 300000 */
+          price_per_day: number;
+          /** @example 500000 */
+          deposit_amount: number;
+          /**
+           * @description Optional image label/description
+           * @example Front view
+           */
+          label?: string;
+          /**
+           * Format: binary
+           * @description Vehicle image file (jpg, jpeg, png, gif, webp) - Max 5MB
+           */
+          image?: string;
+        };
       };
     };
     responses: {
@@ -2875,85 +2871,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['cf0f697a791a137f27cb1'];
-        };
-      };
-      /** @description Invalid payload */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseBadRequest'];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseUnauthorized'];
-        };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseForbidden'];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseNotFound'];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseConflict'];
-        };
-      };
-      /** @description Server error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseInternalError'];
-        };
-      };
-    };
-  };
-  VehicleController_createWithStationAndPricing: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CreateVehicleWithStationAndPricingDto'];
-      };
-    };
-    responses: {
-      /** @description Vehicle created with pricing for an existing station */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['f0f697a791a137f27cb10'];
+          'application/json': components['schemas']['5674a767b447a1248fd43'];
         };
       };
       /** @description Invalid payload */
@@ -3023,14 +2941,11 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Vehicle details */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          'application/json': components['schemas']['f697a791a137f27cb102d'];
-        };
+        content?: never;
       };
       /** @description Invalid payload */
       400: {
@@ -3099,7 +3014,40 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['UpdateVehicleDto'];
+        'multipart/form-data': {
+          /** @example Tesla */
+          make?: string;
+          /** @example Model 3 */
+          model?: string;
+          /** @example 2025 */
+          model_year?: number;
+          /** @example EV */
+          category?: string;
+          /** @example 75 */
+          battery_capacity_kwh?: number;
+          /** @example 500 */
+          range_km?: number;
+          /** @example 5YJ3E1EA7KF317XXX */
+          vin_number?: string;
+          /** @example station_id */
+          station_id?: string;
+          /** @example 50000 */
+          price_per_hour?: number;
+          /** @example 300000 */
+          price_per_day?: number;
+          /** @example 500000 */
+          deposit_amount?: number;
+          /**
+           * @description Optional image label/description
+           * @example Front view
+           */
+          label?: string;
+          /**
+           * Format: binary
+           * @description Vehicle image file (jpg, jpeg, png, gif, webp) - Max 5MB
+           */
+          image?: string;
+        };
       };
     };
     responses: {
@@ -3109,7 +3057,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['697a791a137f27cb102df'];
+          'application/json': components['schemas']['74a767b447a1248fd4370'];
         };
       };
       /** @description Invalid payload */
@@ -3180,6 +3128,162 @@ export interface operations {
     requestBody?: never;
     responses: {
       /** @description Vehicle hard-deleted */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseMsg'];
+        };
+      };
+      /** @description Invalid payload */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseBadRequest'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseUnauthorized'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseForbidden'];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseNotFound'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseConflict'];
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseInternalError'];
+        };
+      };
+    };
+  };
+  VehicleController_changeStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChangeStatusDto'];
+      };
+    };
+    responses: {
+      /** @description Vehicle status changed */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseMsg'];
+        };
+      };
+      /** @description Invalid payload */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseBadRequest'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseUnauthorized'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseForbidden'];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseNotFound'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseConflict'];
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseInternalError'];
+        };
+      };
+    };
+  };
+  VehicleController_restore: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Vehicle restored */
       200: {
         headers: {
           [name: string]: unknown;
@@ -3320,316 +3424,6 @@ export interface operations {
       };
     };
   };
-  PricingController_getPricingHistoryByVehicle: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        vehicleId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Pricing history for vehicle */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['91a137f27cb102df1c400'];
-        };
-      };
-      /** @description Invalid payload */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseBadRequest'];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseUnauthorized'];
-        };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseForbidden'];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseNotFound'];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseConflict'];
-        };
-      };
-      /** @description Server error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseInternalError'];
-        };
-      };
-    };
-  };
-  PricingController_create: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CreatePricingDto'];
-      };
-    };
-    responses: {
-      /** @description Pricing created */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['1a137f27cb102df1c4001'];
-        };
-      };
-      /** @description Invalid payload */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseBadRequest'];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseUnauthorized'];
-        };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseForbidden'];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseNotFound'];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseConflict'];
-        };
-      };
-      /** @description Server error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseInternalError'];
-        };
-      };
-    };
-  };
-  PricingController_update: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CreatePricingDto'];
-      };
-    };
-    responses: {
-      /** @description Pricing updated */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['a137f27cb102df1c40015'];
-        };
-      };
-      /** @description Invalid payload */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseBadRequest'];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseUnauthorized'];
-        };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseForbidden'];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseNotFound'];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseConflict'];
-        };
-      };
-      /** @description Server error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseInternalError'];
-        };
-      };
-    };
-  };
-  PricingController_remove: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Pricing deleted */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseMsg'];
-        };
-      };
-      /** @description Invalid payload */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseBadRequest'];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseUnauthorized'];
-        };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseForbidden'];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseNotFound'];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseConflict'];
-        };
-      };
-      /** @description Server error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ResponseInternalError'];
-        };
-      };
-    };
-  };
   KycsController_create: {
     parameters: {
       query?: never;
@@ -3649,7 +3443,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['137f27cb102df1c400155'];
+          'application/json': components['schemas']['7b447a1248fd43706a921'];
         };
       };
       /** @description Invalid payload */
@@ -3729,7 +3523,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['37f27cb102df1c400155b'];
+          'application/json': components['schemas']['b447a1248fd43706a9216'];
         };
       };
       /** @description Invalid payload */
@@ -3885,7 +3679,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['7f27cb102df1c400155bc'];
+          'application/json': components['schemas']['447a1248fd43706a9216d'];
         };
       };
       /** @description Invalid payload */
@@ -3951,12 +3745,12 @@ export interface operations {
         page?: number;
         /** @description Number of items per page */
         take?: number;
-        /** @description Field to sort by */
-        sortBy?: string;
         /** @description Sort direction */
         sortOrder?: 'ASC' | 'DESC';
         /** @description Từ khóa tìm kiếm (full_name hoặc email của renter/staff) */
         search?: string;
+        /** @description Field to sort by */
+        sortBy?: string;
         /** @description Ngày bắt đầu lọc (format YYYY-MM-DD) */
         from_date?: string;
         /** @description Ngày kết thúc lọc (format YYYY-MM-DD) */
@@ -3974,13 +3768,13 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description List of bookings */
+      /** @description List of bookings with populated relationships */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['27cb102df1c400155bc67'];
+          'application/json': components['schemas']['BookingListResponse'];
         };
       };
       /** @description Invalid payload */
@@ -4142,8 +3936,100 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['f27cb102df1c400155bc6'];
+          'application/json': components['schemas']['47a1248fd43706a9216d4'];
         };
+      };
+      /** @description Invalid payload */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseBadRequest'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseUnauthorized'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseForbidden'];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseNotFound'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseConflict'];
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseInternalError'];
+        };
+      };
+    };
+  };
+  BookingController_getBookingsByRenter: {
+    parameters: {
+      query?: {
+        /** @description Page number (starts from 1) */
+        page?: number;
+        /** @description Number of items per page */
+        take?: number;
+        /** @description Sort direction */
+        sortOrder?: 'ASC' | 'DESC';
+        /** @description Từ khóa tìm kiếm (full_name hoặc email của renter/staff) */
+        search?: string;
+        /** @description Field to sort by */
+        sortBy?: string;
+        /** @description Ngày bắt đầu lọc (format YYYY-MM-DD) */
+        from_date?: string;
+        /** @description Ngày kết thúc lọc (format YYYY-MM-DD) */
+        to_date?: string;
+        /** @description Trạng thái booking */
+        statusBooking?: 'pending_verification' | 'verified' | 'cancelled';
+        /** @description Trạng thái xác minh (confirm) */
+        statusConfirm?: 'pending' | 'approved' | 'rejected_mismatch' | 'rejected_other';
+        /** @description Phương thức thanh toán */
+        method?: 'unknown' | 'cash' | 'bank_transfer';
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Invalid payload */
       400: {
@@ -4218,7 +4104,83 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['7cb102df1c400155bc670'];
+          'application/json': components['schemas']['7a1248fd43706a9216d48'];
+        };
+      };
+      /** @description Invalid payload */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseBadRequest'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseUnauthorized'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseForbidden'];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseNotFound'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseConflict'];
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseInternalError'];
+        };
+      };
+    };
+  };
+  BookingController_cancelBooking: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Booking cancelled */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseMsg'];
         };
       };
       /** @description Invalid payload */
@@ -4360,12 +4322,12 @@ export interface operations {
         page?: number;
         /** @description Number of items per page */
         take?: number;
-        /** @description Field to sort by */
-        sortBy?: string;
         /** @description Sort direction */
         sortOrder?: 'ASC' | 'DESC';
         /** @description Tìm kiếm theo email hoặc full_name của renter */
         search?: string;
+        /** @description Field to sort by */
+        sortBy?: string;
         /** @description Trạng thái rental (reserved, in_progress, completed, cancelled, late) */
         status?: 'reserved' | 'in_progress' | 'completed' | 'late' | 'cancelled';
         /** @description Ngày bắt đầu lọc theo pickup_datetime (ISO format) */
@@ -4379,14 +4341,12 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description List of rentals */
+      /** @description List of rentals with populated booking, inspections, and contract */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          'application/json': components['schemas']['cb102df1c400155bc6702'];
-        };
+        content?: never;
       };
       /** @description Invalid payload */
       400: {
@@ -4455,14 +4415,12 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Rental details */
+      /** @description Rental details with populated booking, inspections, and contract */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          'application/json': components['schemas']['b102df1c400155bc67026'];
-        };
+        content?: never;
       };
       /** @description Invalid payload */
       400: {
@@ -4539,7 +4497,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['102df1c400155bc670264'];
+          'application/json': components['schemas']['a1248fd43706a9216d48a'];
         };
       };
       /** @description Invalid payload */
@@ -4630,7 +4588,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['2df1c400155bc67026431'];
+          'application/json': components['schemas']['248fd43706a9216d48ac2'];
         };
       };
       /** @description Invalid payload */
@@ -4706,7 +4664,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['df1c400155bc670264311'];
+          'application/json': components['schemas']['48fd43706a9216d48ac28'];
         };
       };
       /** @description Invalid payload */
@@ -4786,7 +4744,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['f1c400155bc670264311a'];
+          'application/json': components['schemas']['8fd43706a9216d48ac28b'];
         };
       };
       /** @description Invalid payload */
@@ -4956,7 +4914,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['c400155bc670264311a09'];
+          'application/json': components['schemas']['d43706a9216d48ac28b28'];
         };
       };
       /** @description Invalid payload */
@@ -5047,7 +5005,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['00155bc670264311a0976'];
+          'application/json': components['schemas']['3706a9216d48ac28b2822'];
         };
       };
       /** @description Invalid payload */
@@ -5189,12 +5147,12 @@ export interface operations {
         page?: number;
         /** @description Number of items per page */
         take?: number;
-        /** @description Field to sort by */
-        sortBy?: string;
         /** @description Sort direction */
         sortOrder?: 'ASC' | 'DESC';
         /** @description Search term to filter results */
         search?: string;
+        /** @description Field to sort by */
+        sortBy?: string;
         /** @description Status of the Station (true = active) */
         is_active?: boolean;
       };
@@ -5210,7 +5168,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['7a791a137f27cb102df1c'];
+          'application/json': components['schemas']['a767b447a1248fd43706a'];
         };
       };
       /** @description Invalid payload */
@@ -5288,7 +5246,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['97a791a137f27cb102df1'];
+          'application/json': components['schemas']['4a767b447a1248fd43706'];
         };
       };
       /** @description Invalid payload */
@@ -5364,7 +5322,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['a791a137f27cb102df1c4'];
+          'application/json': components['schemas']['767b447a1248fd43706a9'];
         };
       };
       /** @description Invalid payload */
@@ -5444,7 +5402,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['791a137f27cb102df1c40'];
+          'application/json': components['schemas']['67b447a1248fd43706a92'];
         };
       };
       /** @description Invalid payload */
@@ -5515,6 +5473,82 @@ export interface operations {
     requestBody?: never;
     responses: {
       /** @description Station removed */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseMsg'];
+        };
+      };
+      /** @description Invalid payload */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseBadRequest'];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseUnauthorized'];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseForbidden'];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseNotFound'];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseConflict'];
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResponseInternalError'];
+        };
+      };
+    };
+  };
+  StationController_restore: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Station restored */
       200: {
         headers: {
           [name: string]: unknown;
