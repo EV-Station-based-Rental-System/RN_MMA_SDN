@@ -44,8 +44,6 @@ export default function BookingTimeSelectionScreen() {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  // Flow
-  const [step, setStep] = useState<'select' | 'summary'>('select');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.BANK_TRANSFER);
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,7 +51,7 @@ export default function BookingTimeSelectionScreen() {
     const load = async () => {
       try {
         setLoading(true);
-        const data = await VehicleService.getVehicleById(vehicleId);
+        const data = await VehicleService.findOne(vehicleId);
         setVehicle(data);
       } catch (error: any) {
         console.error('Load vehicle error:', error);
@@ -116,14 +114,6 @@ export default function BookingTimeSelectionScreen() {
     return price;
   };
 
-  const handleContinue = () => {
-    if (endDate <= startDate) {
-      alert('End date must be after start date');
-      return;
-    }
-    setStep('summary');
-  };
-
   const handleCreateBooking = async () => {
     try {
       if (endDate <= startDate) {
@@ -131,28 +121,70 @@ export default function BookingTimeSelectionScreen() {
         return;
       }
       setSubmitting(true);
+
+      const { hours } = calculateDuration();
+      const rentalUntil = hours >= 24 ? 'days' : 'hours';
+
       const bookingData = {
         payment_method: paymentMethod,
         total_amount: totalAmount,
         vehicle_id: vehicleId,
         rental_start_datetime: startDate.toISOString(),
         expected_return_datetime: endDate.toISOString(),
+        rental_until: rentalUntil,
       };
 
+      console.warn('📤 Creating booking with data:', JSON.stringify(bookingData, null, 2));
+
       const resp = await BookingService.createBooking(bookingData as any);
-      if (resp?.data?.payUrl) {
+      
+      // Bank Transfer: Has payUrl, needs payment then staff verification
+      if (resp?.data?.payUrl && paymentMethod === PaymentMethod.BANK_TRANSFER) {
         router.push({
           pathname: '/success',
-          params: { payUrl: resp.data.payUrl, message: 'Booking created' },
+          params: {
+            payUrl: resp.data.payUrl,
+            message: 'Booking Pending Verification',
+            statusType: 'pending',
+            vehicleName: `${vehicle?.make} ${vehicle?.model}`,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            rentalFee: rentalFee.toString(),
+            depositAmount: depositAmount.toString(),
+            totalAmount: totalAmount.toString(),
+            paymentMethod: paymentMethod,
+          },
         });
-      } else {
-        alert('Booking created successfully');
+      } 
+      // Cash Payment: No payUrl, needs staff verification at pickup
+      else if (paymentMethod === PaymentMethod.CASH) {
+        router.push({
+          pathname: '/success',
+          params: {
+            message: 'Booking Pending Verification',
+            statusType: 'pending',
+            vehicleName: `${vehicle?.make} ${vehicle?.model}`,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            rentalFee: rentalFee.toString(),
+            depositAmount: depositAmount.toString(),
+            totalAmount: totalAmount.toString(),
+            paymentMethod: paymentMethod,
+          },
+        });
+      }
+      // Fallback
+      else {
+        alert('Booking created successfully. Waiting for staff verification.');
         router.replace('/(tabs)/bookings');
       }
     } catch (error: any) {
-      console.error('Create booking error:', error);
+      console.error('❌ Create booking error:', error);
+      console.error('❌ Error response:', error?.response);
+      console.error('❌ Error response data:', JSON.stringify(error?.response?.data, null, 2));
+      
       const msg = error?.response?.data?.message || error?.message || 'Failed to create booking';
-      alert(msg);
+      alert(`Booking Error: ${msg}`);
     } finally {
       setSubmitting(false);
     }
@@ -345,91 +377,83 @@ export default function BookingTimeSelectionScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Duration Summary */}
-        {step === 'select' && (
-          <>
-            <View style={styles.durationCard}>
-              <View style={styles.durationRow}>
-                <Text style={styles.durationLabel}>Duration</Text>
-                <Text style={styles.durationValue}>
-                  {hours >= 24
-                    ? `${Math.ceil(hours / 24)} day${Math.ceil(hours / 24) > 1 ? 's' : ''}`
-                    : `${hours} hour${hours !== 1 ? 's' : ''}`}
-                </Text>
-              </View>
-              <View style={styles.durationRow}>
-                <Text style={styles.durationLabel}>
-                  {hours >= 24 ? 'Daily Rate' : 'Hourly Rate'}
-                </Text>
-                <Text style={styles.durationValue}>
-                  {hours >= 24
-                    ? `${((vehicle as any)?.price_per_day || 0).toLocaleString('vi-VN')}₫/day`
-                    : `${((vehicle as any)?.price_per_hour || 0).toLocaleString('vi-VN')}₫/h`}
-                </Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.durationRow}>
-                <Text style={styles.estimatedLabel}>Estimated Rental</Text>
-                <Text style={styles.estimatedPrice}>{rentalFee.toLocaleString('vi-VN')}₫</Text>
-              </View>
+        {/* Pricing Summary */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pricing Summary</Text>
+          <View style={styles.durationCard}>
+            <View style={styles.durationRow}>
+              <Text style={styles.durationLabel}>Duration</Text>
+              <Text style={styles.durationValue}>
+                {hours >= 24
+                  ? `${Math.ceil(hours / 24)} day${Math.ceil(hours / 24) > 1 ? 's' : ''}`
+                  : `${hours} hour${hours !== 1 ? 's' : ''}`}
+              </Text>
             </View>
-            <View style={{ height: 100 }} />
-          </>
-        )}
-
-        {step === 'summary' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Booking Summary</Text>
-            <View style={[styles.stationCard, { marginTop: theme.spacing.md }]}>
-              <View style={styles.durationRow}>
-                <Text style={styles.durationLabel}>Rental Fee</Text>
-                <Text style={styles.durationValue}>{rentalFee.toLocaleString('vi-VN')}₫</Text>
-              </View>
-              <View style={[styles.durationRow, { marginTop: theme.spacing.sm }]}>
-                <Text style={styles.durationLabel}>Deposit</Text>
-                <Text style={styles.durationValue}>{depositAmount.toLocaleString('vi-VN')}₫</Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={[styles.durationRow, { marginTop: theme.spacing.sm }]}>
-                <Text style={styles.estimatedLabel}>Total</Text>
-                <Text style={styles.estimatedPrice}>{totalAmount.toLocaleString('vi-VN')}₫</Text>
-              </View>
+            <View style={styles.durationRow}>
+              <Text style={styles.durationLabel}>
+                {hours >= 24 ? 'Daily Rate' : 'Hourly Rate'}
+              </Text>
+              <Text style={styles.durationValue}>
+                {hours >= 24
+                  ? `${((vehicle as any)?.price_per_day || 0).toLocaleString('vi-VN')}₫/day`
+                  : `${((vehicle as any)?.price_per_hour || 0).toLocaleString('vi-VN')}₫/h`}
+              </Text>
             </View>
-
-            <View style={{ height: theme.spacing.lg }} />
-
-            <Text style={styles.sectionTitle}>Payment Method</Text>
-            <View style={{ marginTop: theme.spacing.sm }}>
-              <TouchableOpacity
-                onPress={() => setPaymentMethod(PaymentMethod.BANK_TRANSFER)}
-                style={[
-                  styles.dateTimeButton,
-                  paymentMethod === PaymentMethod.BANK_TRANSFER && {
-                    borderColor: theme.colors.primary.main,
-                    borderWidth: 1,
-                  },
-                ]}
-              >
-                <Text style={styles.dateTimeText}>Bank Transfer (VNPay / MOMO)</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setPaymentMethod(PaymentMethod.CASH)}
-                style={[
-                  styles.dateTimeButton,
-                  paymentMethod === PaymentMethod.CASH && {
-                    borderColor: theme.colors.primary.main,
-                    borderWidth: 1,
-                    marginTop: theme.spacing.sm,
-                  },
-                ]}
-              >
-                <Text style={styles.dateTimeText}>Cash (Pay at pickup)</Text>
-              </TouchableOpacity>
+            <View style={styles.durationRow}>
+              <Text style={styles.durationLabel}>Rental Fee</Text>
+              <Text style={styles.durationValue}>{rentalFee.toLocaleString('vi-VN')}₫</Text>
             </View>
-
-            <View style={{ height: 100 }} />
+            <View style={styles.durationRow}>
+              <Text style={styles.durationLabel}>Deposit</Text>
+              <Text style={styles.durationValue}>{depositAmount.toLocaleString('vi-VN')}₫</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.durationRow}>
+              <Text style={styles.estimatedLabel}>Total Amount</Text>
+              <Text style={styles.estimatedPrice}>{totalAmount.toLocaleString('vi-VN')}₫</Text>
+            </View>
           </View>
-        )}
+        </View>
+
+        {/* Payment Method */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Payment Method</Text>
+          <View style={{ marginTop: theme.spacing.sm }}>
+            <TouchableOpacity
+              onPress={() => setPaymentMethod(PaymentMethod.BANK_TRANSFER)}
+              style={[
+                styles.dateTimeButton,
+                paymentMethod === PaymentMethod.BANK_TRANSFER && {
+                  borderColor: theme.colors.primary.main,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={styles.dateTimeText}>🏦 Bank Transfer (MoMo / VNPay)</Text>
+              <Text style={[styles.dateTimeText, { fontSize: 12, color: theme.colors.text.secondary, marginTop: 4 }]}>
+                Pay online securely with mobile banking
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setPaymentMethod(PaymentMethod.CASH)}
+              style={[
+                styles.dateTimeButton,
+                paymentMethod === PaymentMethod.CASH && {
+                  borderColor: theme.colors.primary.main,
+                  borderWidth: 1,
+                },
+                { marginTop: theme.spacing.sm },
+              ]}
+            >
+              <Text style={styles.dateTimeText}>💵 Cash (Pay at pickup)</Text>
+              <Text style={[styles.dateTimeText, { fontSize: 12, color: theme.colors.text.secondary, marginTop: 4 }]}>
+                Pay when you pick up the vehicle
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ height: 100 }} />
+        </View>
       </ScrollView>
 
       {/* Date/Time Pickers */}
@@ -476,14 +500,12 @@ export default function BookingTimeSelectionScreen() {
         <View style={styles.bottomPriceContainer}>
           <Text style={styles.bottomPriceLabel}>Total</Text>
           <Text style={styles.bottomPrice}>
-            {(step === 'summary' ? totalAmount : rentalFee).toLocaleString('vi-VN')}₫
+            {totalAmount.toLocaleString('vi-VN')}₫
           </Text>
         </View>
         <CustomButton
-          title={
-            step === 'select' ? 'Review →' : submitting ? 'Processing...' : 'Proceed to Payment →'
-          }
-          onPress={step === 'select' ? handleContinue : handleCreateBooking}
+          title={submitting ? 'Processing...' : 'Proceed to Payment →'}
+          onPress={handleCreateBooking}
           style={styles.continueButton}
           loading={submitting}
           disabled={submitting}

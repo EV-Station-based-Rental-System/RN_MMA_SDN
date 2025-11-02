@@ -35,7 +35,9 @@ class VehicleService {
    */
   async findOne(id: string): Promise<any> {
     try {
-      return await ApiClient.get(`/vehicle/${id}`);
+      const response = await ApiClient.get(`/vehicle/${id}`);
+      // Backend returns: { data: vehicleObject }
+      return response.data || response;
     } catch (error) {
       console.error('findOne error:', error);
       throw error;
@@ -83,7 +85,7 @@ class VehicleService {
    */
   async restore(id: string): Promise<any> {
     try {
-      return await ApiClient.patch(`/vehicle/restore/${id}`, data);
+      return await ApiClient.patch(`/vehicle/restore/${id}`);
     } catch (error) {
       console.error('restore error:', error);
       throw error;
@@ -95,7 +97,7 @@ class VehicleService {
    */
   async softDelete(id: string): Promise<any> {
     try {
-      return await ApiClient.patch(`/vehicle/soft-delete/${id}`, data);
+      return await ApiClient.patch(`/vehicle/soft-delete/${id}`);
     } catch (error) {
       console.error('softDelete error:', error);
       throw error;

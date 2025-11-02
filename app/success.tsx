@@ -9,11 +9,11 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
-  Linking,
   Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { theme } from '@/src/theme';
 import { CustomButton } from '@/src/components';
 import { useEffect, useRef, useState } from 'react';
@@ -23,6 +23,14 @@ export default function PaymentSuccessScreen() {
   const params = useLocalSearchParams();
   const payUrl = params.payUrl as string;
   const message = (params.message as string) || 'Payment successful';
+  const statusType = (params.statusType as string) || 'success'; // 'success' | 'pending'
+  const vehicleName = params.vehicleName as string;
+  const startDate = params.startDate as string;
+  const endDate = params.endDate as string;
+  const rentalFee = params.rentalFee as string;
+  const depositAmount = params.depositAmount as string;
+  const totalAmount = params.totalAmount as string;
+  const paymentMethod = params.paymentMethod as string;
   
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -51,16 +59,29 @@ export default function PaymentSuccessScreen() {
 
     try {
       setOpening(true);
-      const supported = await Linking.canOpenURL(payUrl);
+      // Open payment URL in an in-app browser
+      const result = await WebBrowser.openBrowserAsync(payUrl, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        toolbarColor: theme.colors.primary.main,
+        controlsColor: '#FFFFFF',
+        showTitle: true,
+        enableBarCollapsing: false,
+      });
       
-      if (supported) {
-        await Linking.openURL(payUrl);
-      } else {
-        Alert.alert('Error', 'Cannot open payment URL');
+      // Handle browser dismissal
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        Alert.alert(
+          'Payment Incomplete',
+          'You closed the payment browser. Would you like to try again?',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            { text: 'Try Again', onPress: handleOpenPayment },
+          ]
+        );
       }
     } catch (error) {
-      console.error('Open URL error:', error);
-      Alert.alert('Error', 'Failed to open payment URL');
+      console.error('Open payment browser error:', error);
+      Alert.alert('Error', 'Failed to open payment browser. Please try again.');
     } finally {
       setOpening(false);
     }
@@ -95,27 +116,58 @@ export default function PaymentSuccessScreen() {
               },
             ]}
           >
-            <View style={styles.successIcon}>
-              <Ionicons name="checkmark" size={48} color="#FFFFFF" />
+            <View style={[styles.successIcon, statusType === 'pending' && styles.pendingIcon]}>
+              <Ionicons 
+                name={statusType === 'pending' ? 'time-outline' : 'checkmark'} 
+                size={48} 
+                color="#FFFFFF" 
+              />
             </View>
             {/* Animated circles */}
-            <View style={[styles.animatedCircle, styles.circle1]} />
-            <View style={[styles.animatedCircle, styles.circle2]} />
-            <View style={[styles.animatedCircle, styles.circle3]} />
+            <View style={[styles.animatedCircle, styles.circle1, statusType === 'pending' && styles.pendingCircle]} />
+            <View style={[styles.animatedCircle, styles.circle2, statusType === 'pending' && styles.pendingCircle]} />
+            <View style={[styles.animatedCircle, styles.circle3, statusType === 'pending' && styles.pendingCircle]} />
           </Animated.View>
         </View>
 
         <Text style={styles.successTitle}>{message}</Text>
         <Text style={styles.successSubtitle}>
-          {payUrl ? 'Please complete your payment to finalize your booking' : 'Your car rent booking has been successfully completed'}
+          {statusType === 'pending' 
+            ? paymentMethod === 'bank_transfer'
+              ? 'Complete your payment, then wait for staff verification before pickup'
+              : 'Your booking is pending staff verification. Please wait for confirmation before pickup'
+            : 'Your car rent booking has been successfully completed'}
         </Text>
 
-        {payUrl && (
+        {/* Verification Notice for Pending Bookings */}
+        {statusType === 'pending' && (
+          <View style={[styles.paymentUrlCard, styles.verificationCard]}>
+            <View style={[styles.paymentIconContainer, styles.verificationIconContainer]}>
+              <Ionicons name="shield-checkmark-outline" size={24} color="#FFFFFF" />
+            </View>
+            <View style={styles.paymentUrlTextContainer}>
+              <Text style={styles.paymentUrlTitle}>Verification Required</Text>
+              <Text style={styles.paymentUrlText}>
+                {paymentMethod === 'bank_transfer'
+                  ? 'After completing payment, staff will verify your booking before vehicle pickup'
+                  : 'Staff will verify your booking when you arrive at the station for pickup'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Payment Action for Bank Transfer */}
+        {payUrl && statusType === 'pending' && (
           <View style={styles.paymentUrlCard}>
-            <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary.main} />
-            <Text style={styles.paymentUrlText}>
-              Tap the button below to proceed to payment
-            </Text>
+            <View style={styles.paymentIconContainer}>
+              <Ionicons name="card-outline" size={24} color="#FFFFFF" />
+            </View>
+            <View style={styles.paymentUrlTextContainer}>
+              <Text style={styles.paymentUrlTitle}>Complete Payment</Text>
+              <Text style={styles.paymentUrlText}>
+                Tap &ldquo;Proceed to Payment&rdquo; below to complete your bank transfer payment securely
+              </Text>
+            </View>
           </View>
         )}
 
@@ -123,68 +175,65 @@ export default function PaymentSuccessScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Booking information</Text>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Car Model</Text>
-            <Text style={styles.infoValue}>Tesla Model S</Text>
-          </View>
+          {vehicleName && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Car Model</Text>
+              <Text style={styles.infoValue}>{vehicleName}</Text>
+            </View>
+          )}
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Rental Date</Text>
-            <Text style={styles.infoValue}>19.Jan24 - 22.Jan 24</Text>
-          </View>
+          {startDate && endDate && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Rental Period</Text>
+              <Text style={styles.infoValue}>
+                {new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </Text>
+            </View>
+          )}
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Name</Text>
-            <Text style={styles.infoValue}>Benjamin Jack</Text>
-          </View>
+          {paymentMethod && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Payment Method</Text>
+              <Text style={styles.infoValue}>
+                {paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Transaction Detail Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Transaction detail</Text>
+          <Text style={styles.cardTitle}>Payment Summary</Text>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Transaction ID</Text>
-            <Text style={styles.infoValue}>#100012390J1</Text>
+            <Text style={styles.infoLabel}>Booking Date</Text>
+            <Text style={styles.infoValue}>
+              {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} - {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
           </View>
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Transaction Date</Text>
-            <Text style={styles.infoValue}>01-Jan2024 - 10:30 am</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Payment  Method</Text>
-            <View style={styles.paymentMethod}>
-              <View style={styles.mastercardLogo}>
-                <View style={[styles.circle, styles.circleRed]} />
-                <View style={[styles.circle, styles.circleOrange]} />
-              </View>
-              <Text style={styles.cardNumber}>123 ••• ••• •••25</Text>
+          {rentalFee && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Rental Fee</Text>
+              <Text style={styles.infoValue}>{parseFloat(rentalFee).toLocaleString('vi-VN')}₫</Text>
             </View>
-          </View>
+          )}
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Amount</Text>
-            <Text style={styles.infoValue}>$1400</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Service fee</Text>
-            <Text style={styles.infoValue}>$15</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Tax</Text>
-            <Text style={styles.infoValue}>$0</Text>
-          </View>
+          {depositAmount && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Deposit</Text>
+              <Text style={styles.infoValue}>{parseFloat(depositAmount).toLocaleString('vi-VN')}₫</Text>
+            </View>
+          )}
 
           <View style={styles.divider} />
 
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total amount</Text>
-            <Text style={styles.totalValue}>$1415</Text>
-          </View>
+          {totalAmount && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total Amount</Text>
+              <Text style={styles.totalValue}>{parseFloat(totalAmount).toLocaleString('vi-VN')}₫</Text>
+            </View>
+          )}
         </View>
 
         {/* Action Buttons */}
@@ -290,10 +339,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 10,
   },
+  pendingIcon: {
+    backgroundColor: '#FF9800',
+  },
   animatedCircle: {
     position: 'absolute',
     borderRadius: 50,
     borderWidth: 2,
+  },
+  pendingCircle: {
+    borderColor: '#FF9800',
   },
   circle1: {
     width: 100,
@@ -433,19 +488,43 @@ const styles = StyleSheet.create({
   paymentUrlCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: theme.colors.background.paper,
-    padding: theme.spacing.md,
+    backgroundColor: '#FFF8E1',
+    padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.lg,
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.lg,
-    gap: theme.spacing.sm,
-    marginHorizontal: theme.spacing.lg,
+    gap: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: '#FFD54F',
+  },
+  verificationCard: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#81C784',
+  },
+  paymentIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary.main,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verificationIconContainer: {
+    backgroundColor: '#4CAF50',
+  },
+  paymentUrlTextContainer: {
+    flex: 1,
+  },
+  paymentUrlTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: 4,
   },
   paymentUrlText: {
-    flex: 1,
-    fontSize: 14,
-    color: theme.colors.text.primary,
-    lineHeight: 20,
+    fontSize: 13,
+    color: theme.colors.text.secondary,
+    lineHeight: 18,
   },
   secondaryButton: {
     height: 56,
