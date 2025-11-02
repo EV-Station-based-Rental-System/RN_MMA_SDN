@@ -1,5 +1,6 @@
 /**
- * Booking Details Screen
+ * Booking Time Selection Screen
+ * Select rental start and end date/time
  */
 
 import {
@@ -8,56 +9,221 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  Switch,
+  Platform,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { theme } from '@/src/theme';
-import { CustomButton, DateTimePicker } from '@/src/components';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/src/contexts/AuthContext';
-import ProtectedRoute from '@/src/components/ProtectedRoute';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { theme } from '@/src/theme';
+import { CustomButton } from '@/src/components';
+import VehicleService from '@/src/api/vehicle.api';
+import BookingService from '@/src/api/booking.api';
+import { PaymentMethod } from '@/src/types/api.types';
+import type { VehicleWithPricingAndStation } from '@/src/types/api.types';
 
-function BookingDetailsContent() {
+export default function BookingTimeSelectionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
-  
-  const [withDriver, setWithDriver] = useState(false);
-  const [selectedGender, setSelectedGender] = useState<'male' | 'female' | 'others'>('male');
-  const [selectedPeriod, setSelectedPeriod] = useState<'hour' | 'day' | 'weekly' | 'monthly'>('day');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [contact, setContact] = useState('');
-  const [pickupDate, setPickupDate] = useState('19/ January /2024');
-  const [returnDate, setReturnDate] = useState('22/ January /2024');
-  const [location, setLocation] = useState('Shore Dr, Chicago 0062 Usa');
-  const [showPickupPicker, setShowPickupPicker] = useState(false);
-  const [showReturnPicker, setShowReturnPicker] = useState(false);
+  const vehicleId = params.id as string;
 
-  // Pre-fill form với user data
+  const [vehicle, setVehicle] = useState<VehicleWithPricingAndStation | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Date/Time states
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    return date;
+  });
+
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  // Flow
+  const [step, setStep] = useState<'select' | 'summary'>('select');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.BANK_TRANSFER);
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
-    if (user) {
-      setFullName(user.full_name || '');
-      setEmail(user.email || '');
-      setContact(user.phone || '');
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await VehicleService.getVehicleById(vehicleId);
+        setVehicle(data);
+      } catch (error: any) {
+        console.error('Load vehicle error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [vehicleId]);
+
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const formatTime = (date: Date): string => {
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const calculateDuration = (): { hours: number; days: number } => {
+    const diffMs = endDate.getTime() - startDate.getTime();
+    const hours = Math.ceil(diffMs / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    return { hours, days };
+  };
+
+  const calculatePrice = (): number => {
+    const { hours } = calculateDuration();
+    const pricePerHour = (vehicle as any)?.price_per_hour || vehicle?.pricing?.price_per_hour || 0;
+    const pricePerDay = (vehicle as any)?.price_per_day || vehicle?.pricing?.price_per_day || 0;
+
+    // Debug: In ra console để kiểm tra
+    console.warn('🔍 Price Calculation:', {
+      hours,
+      pricePerHour,
+      pricePerDay,
+      useDaily: hours >= 24,
+    });
+
+    // Nếu thuê >= 24 giờ (1 ngày trở lên): tính theo ngày (làm tròn lên)
+    // Ví dụ: 24h = 1 ngày, 26h = 2 ngày, 48h = 2 ngày, 49h = 3 ngày
+    if (hours >= 24) {
+      const totalDays = Math.ceil(hours / 24);
+      const price = totalDays * pricePerDay;
+      console.warn(`✅ DAILY: ${totalDays} days × ${pricePerDay} = ${price}`);
+      return price;
     }
-  }, [user]);
 
-  const currentStep = 1; // Booking details step
-
-  const handlePickupConfirm = (date: Date, time: { hour: number; minute: number; period: 'am' | 'pm' }) => {
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const formattedDate = `${date.getDate()}/ ${monthNames[date.getMonth()]} /${date.getFullYear()}`;
-    setPickupDate(formattedDate);
+    // Nếu thuê < 24 giờ: tính theo giờ
+    const price = hours * pricePerHour;
+    console.warn(`✅ HOURLY: ${hours} hours × ${pricePerHour} = ${price}`);
+    return price;
   };
 
-  const handleReturnConfirm = (date: Date, time: { hour: number; minute: number; period: 'am' | 'pm' }) => {
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const formattedDate = `${date.getDate()}/ ${monthNames[date.getMonth()]} /${date.getFullYear()}`;
-    setReturnDate(formattedDate);
+  const handleContinue = () => {
+    if (endDate <= startDate) {
+      alert('End date must be after start date');
+      return;
+    }
+    setStep('summary');
   };
+
+  const handleCreateBooking = async () => {
+    try {
+      if (endDate <= startDate) {
+        alert('End date must be after start date');
+        return;
+      }
+      setSubmitting(true);
+      const bookingData = {
+        payment_method: paymentMethod,
+        total_amount: totalAmount,
+        vehicle_id: vehicleId,
+        rental_start_datetime: startDate.toISOString(),
+        expected_return_datetime: endDate.toISOString(),
+      };
+
+      const resp = await BookingService.createBooking(bookingData as any);
+      if (resp?.data?.payUrl) {
+        router.push({
+          pathname: '/success',
+          params: { payUrl: resp.data.payUrl, message: 'Booking created' },
+        });
+      } else {
+        alert('Booking created successfully');
+        router.replace('/(tabs)/bookings');
+      }
+    } catch (error: any) {
+      console.error('Create booking error:', error);
+      const msg = error?.response?.data?.message || error?.message || 'Failed to create booking';
+      alert(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onStartDateChange = (event: any, selectedDate?: Date) => {
+    setShowStartDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setStartDate(selectedDate);
+    }
+  };
+
+  const onStartTimeChange = (event: any, selectedDate?: Date) => {
+    setShowStartTimePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setStartDate(selectedDate);
+    }
+  };
+
+  const onEndDateChange = (event: any, selectedDate?: Date) => {
+    setShowEndDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setEndDate(selectedDate);
+    }
+  };
+
+  const onEndTimeChange = (event: any, selectedDate?: Date) => {
+    setShowEndTimePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setEndDate(selectedDate);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Select Rental Period</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!vehicle) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Select Rental Period</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Vehicle not found</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const { hours } = calculateDuration();
+  const rentalFee = calculatePrice();
+  const depositAmount = (vehicle as any)?.deposit_amount || vehicle?.pricing?.deposit_amount || 0;
+  const totalAmount = rentalFee + depositAmount;
 
   return (
     <View style={styles.container}>
@@ -66,244 +232,263 @@ function BookingDetailsContent() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Booking Details</Text>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text.primary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Progress Steps */}
-      <View style={styles.progressContainer}>
-        <View style={styles.stepContainer}>
-          <View style={[styles.stepDot, styles.stepActive]} />
-          <Text style={[styles.stepLabel, styles.stepLabelActive]}>Booking details</Text>
-        </View>
-        
-        <View style={styles.stepLine} />
-        
-        <View style={styles.stepContainer}>
-          <View style={styles.stepDot} />
-          <Text style={styles.stepLabel}>Payment methods</Text>
-        </View>
-        
-        <View style={styles.stepLine} />
-        
-        <View style={styles.stepContainer}>
-          <View style={styles.stepDot} />
-          <Text style={styles.stepLabel}>confirmation</Text>
-        </View>
+        <Text style={styles.headerTitle}>Select Rental Period</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Book with Driver */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.cardTitle}>Book with driver</Text>
-              <Text style={styles.cardSubtitle}>Don't have a driver? book with driver.</Text>
+        {/* Vehicle Info Card */}
+        <View style={styles.vehicleCard}>
+          <Image
+            source={{ uri: vehicle.img_url || 'https://via.placeholder.com/120' }}
+            style={styles.vehicleImage}
+          />
+          <View style={styles.vehicleInfo}>
+            <Text style={styles.vehicleName}>
+              {vehicle.make} {vehicle.model}
+            </Text>
+            <Text style={styles.vehicleDetails}>
+              {vehicle.model_year} • {vehicle.category}
+            </Text>
+            <View style={styles.vehicleSpecs}>
+              {vehicle.battery_capacity_kwh && (
+                <View style={styles.spec}>
+                  <Ionicons name="battery-charging" size={14} color={theme.colors.text.secondary} />
+                  <Text style={styles.specText}>{vehicle.battery_capacity_kwh} kWh</Text>
+                </View>
+              )}
+              {vehicle.range_km && (
+                <View style={styles.spec}>
+                  <MaterialCommunityIcons
+                    name="map-marker-distance"
+                    size={14}
+                    color={theme.colors.text.secondary}
+                  />
+                  <Text style={styles.specText}>{vehicle.range_km} km</Text>
+                </View>
+              )}
             </View>
-            <Switch
-              value={withDriver}
-              onValueChange={setWithDriver}
-              trackColor={{ false: '#E5E5E5', true: theme.colors.primary.main }}
-              thumbColor="#FFFFFF"
-            />
           </View>
         </View>
 
-        {/* Full Name */}
-        <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color={theme.colors.text.secondary} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Full Name*"
-            placeholderTextColor={theme.colors.text.placeholder}
-            value={fullName}
-            onChangeText={setFullName}
-          />
-        </View>
+        {/* Pick-up Station */}
+        {vehicle.station && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="location" size={20} color={theme.colors.primary.main} />
+              <Text style={styles.sectionTitle}>Pick-up Location</Text>
+            </View>
+            <View style={styles.stationCard}>
+              <Text style={styles.stationName}>{vehicle.station.name}</Text>
+              <Text style={styles.stationAddress}>{vehicle.station.address}</Text>
+            </View>
+          </View>
+        )}
 
-        {/* Email */}
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color={theme.colors.text.secondary} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email Address*"
-            placeholderTextColor={theme.colors.text.placeholder}
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-
-        {/* Contact */}
-        <View style={styles.inputContainer}>
-          <Ionicons name="call-outline" size={20} color={theme.colors.text.secondary} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Contact*"
-            placeholderTextColor={theme.colors.text.placeholder}
-            keyboardType="phone-pad"
-            value={contact}
-            onChangeText={setContact}
-          />
-        </View>
-
-        {/* Gender */}
+        {/* Start Date & Time */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Gender</Text>
-          <View style={styles.optionsRow}>
-            <TouchableOpacity
-              style={[styles.optionButton, selectedGender === 'male' && styles.optionButtonActive]}
-              onPress={() => setSelectedGender('male')}
-            >
-              <Ionicons 
-                name="male" 
-                size={16} 
-                color={selectedGender === 'male' ? theme.colors.text.inverse : theme.colors.text.secondary} 
-              />
-              <Text style={[styles.optionText, selectedGender === 'male' && styles.optionTextActive]}>
-                Male
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.optionButton, selectedGender === 'female' && styles.optionButtonActive]}
-              onPress={() => setSelectedGender('female')}
-            >
-              <Ionicons 
-                name="female" 
-                size={16} 
-                color={selectedGender === 'female' ? theme.colors.text.inverse : theme.colors.text.secondary} 
-              />
-              <Text style={[styles.optionText, selectedGender === 'female' && styles.optionTextActive]}>
-                Female
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.optionButton, selectedGender === 'others' && styles.optionButtonActive]}
-              onPress={() => setSelectedGender('others')}
-            >
-              <Ionicons 
-                name="transgender" 
-                size={16} 
-                color={selectedGender === 'others' ? theme.colors.text.inverse : theme.colors.text.secondary} 
-              />
-              <Text style={[styles.optionText, selectedGender === 'others' && styles.optionTextActive]}>
-                Others
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="calendar" size={20} color={theme.colors.primary.main} />
+            <Text style={styles.sectionTitle}>Rental Start</Text>
           </View>
+
+          <TouchableOpacity
+            style={styles.dateTimeButton}
+            onPress={() => setShowStartDatePicker(true)}
+          >
+            <View style={styles.dateTimeContent}>
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
+              <Text style={styles.dateTimeText}>{formatDate(startDate)}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.dateTimeButton}
+            onPress={() => setShowStartTimePicker(true)}
+          >
+            <View style={styles.dateTimeContent}>
+              <Ionicons name="time-outline" size={20} color={theme.colors.text.secondary} />
+              <Text style={styles.dateTimeText}>{formatTime(startDate)}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
+          </TouchableOpacity>
         </View>
 
-        {/* Rental Date & Time */}
+        {/* End Date & Time */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rental  Date &Time</Text>
-          <View style={styles.optionsRow}>
-            <TouchableOpacity
-              style={[styles.optionButton, selectedPeriod === 'hour' && styles.optionButtonActive]}
-              onPress={() => setSelectedPeriod('hour')}
-            >
-              <Text style={[styles.optionText, selectedPeriod === 'hour' && styles.optionTextActive]}>
-                Hour
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.optionButton, selectedPeriod === 'day' && styles.optionButtonActive]}
-              onPress={() => setSelectedPeriod('day')}
-            >
-              <Text style={[styles.optionText, selectedPeriod === 'day' && styles.optionTextActive]}>
-                Day
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.optionButton, selectedPeriod === 'weekly' && styles.optionButtonActive]}
-              onPress={() => setSelectedPeriod('weekly')}
-            >
-              <Text style={[styles.optionText, selectedPeriod === 'weekly' && styles.optionTextActive]}>
-                Weekly
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.optionButton, selectedPeriod === 'monthly' && styles.optionButtonActive]}
-              onPress={() => setSelectedPeriod('monthly')}
-            >
-              <Text style={[styles.optionText, selectedPeriod === 'monthly' && styles.optionTextActive]}>
-                Monthly
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="calendar" size={20} color={theme.colors.primary.main} />
+            <Text style={styles.sectionTitle}>Rental End</Text>
           </View>
+
+          <TouchableOpacity
+            style={styles.dateTimeButton}
+            onPress={() => setShowEndDatePicker(true)}
+          >
+            <View style={styles.dateTimeContent}>
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
+              <Text style={styles.dateTimeText}>{formatDate(endDate)}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.dateTimeButton}
+            onPress={() => setShowEndTimePicker(true)}
+          >
+            <View style={styles.dateTimeContent}>
+              <Ionicons name="time-outline" size={20} color={theme.colors.text.secondary} />
+              <Text style={styles.dateTimeText}>{formatTime(endDate)}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.text.secondary} />
+          </TouchableOpacity>
         </View>
 
-        {/* Date Pickers */}
-        <View style={styles.dateRow}>
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateLabel}>Pick up Date</Text>
-            <TouchableOpacity style={styles.dateInput} onPress={() => setShowPickupPicker(true)}>
-              <Ionicons name="calendar-outline" size={16} color={theme.colors.text.secondary} />
-              <Text style={styles.dateText}>{pickupDate}</Text>
-            </TouchableOpacity>
-          </View>
+        {/* Duration Summary */}
+        {step === 'select' && (
+          <>
+            <View style={styles.durationCard}>
+              <View style={styles.durationRow}>
+                <Text style={styles.durationLabel}>Duration</Text>
+                <Text style={styles.durationValue}>
+                  {hours >= 24
+                    ? `${Math.ceil(hours / 24)} day${Math.ceil(hours / 24) > 1 ? 's' : ''}`
+                    : `${hours} hour${hours !== 1 ? 's' : ''}`}
+                </Text>
+              </View>
+              <View style={styles.durationRow}>
+                <Text style={styles.durationLabel}>
+                  {hours >= 24 ? 'Daily Rate' : 'Hourly Rate'}
+                </Text>
+                <Text style={styles.durationValue}>
+                  {hours >= 24
+                    ? `${((vehicle as any)?.price_per_day || 0).toLocaleString('vi-VN')}₫/day`
+                    : `${((vehicle as any)?.price_per_hour || 0).toLocaleString('vi-VN')}₫/h`}
+                </Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.durationRow}>
+                <Text style={styles.estimatedLabel}>Estimated Rental</Text>
+                <Text style={styles.estimatedPrice}>{rentalFee.toLocaleString('vi-VN')}₫</Text>
+              </View>
+            </View>
+            <View style={{ height: 100 }} />
+          </>
+        )}
 
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateLabel}>Return Date</Text>
-            <TouchableOpacity style={styles.dateInput} onPress={() => setShowReturnPicker(true)}>
-              <Ionicons name="calendar-outline" size={16} color={theme.colors.text.secondary} />
-              <Text style={styles.dateText}>{returnDate}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {step === 'summary' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Booking Summary</Text>
+            <View style={[styles.stationCard, { marginTop: theme.spacing.md }]}>
+              <View style={styles.durationRow}>
+                <Text style={styles.durationLabel}>Rental Fee</Text>
+                <Text style={styles.durationValue}>{rentalFee.toLocaleString('vi-VN')}₫</Text>
+              </View>
+              <View style={[styles.durationRow, { marginTop: theme.spacing.sm }]}>
+                <Text style={styles.durationLabel}>Deposit</Text>
+                <Text style={styles.durationValue}>{depositAmount.toLocaleString('vi-VN')}₫</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={[styles.durationRow, { marginTop: theme.spacing.sm }]}>
+                <Text style={styles.estimatedLabel}>Total</Text>
+                <Text style={styles.estimatedPrice}>{totalAmount.toLocaleString('vi-VN')}₫</Text>
+              </View>
+            </View>
 
-        {/* Car Location */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Car Location</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="location-outline" size={20} color={theme.colors.text.secondary} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Location"
-              placeholderTextColor={theme.colors.text.placeholder}
-              value={location}
-              onChangeText={setLocation}
-            />
-          </View>
-        </View>
+            <View style={{ height: theme.spacing.lg }} />
 
-        <View style={{ height: 120 }} />
+            <Text style={styles.sectionTitle}>Payment Method</Text>
+            <View style={{ marginTop: theme.spacing.sm }}>
+              <TouchableOpacity
+                onPress={() => setPaymentMethod(PaymentMethod.BANK_TRANSFER)}
+                style={[
+                  styles.dateTimeButton,
+                  paymentMethod === PaymentMethod.BANK_TRANSFER && {
+                    borderColor: theme.colors.primary.main,
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Text style={styles.dateTimeText}>Bank Transfer (VNPay / MOMO)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setPaymentMethod(PaymentMethod.CASH)}
+                style={[
+                  styles.dateTimeButton,
+                  paymentMethod === PaymentMethod.CASH && {
+                    borderColor: theme.colors.primary.main,
+                    borderWidth: 1,
+                    marginTop: theme.spacing.sm,
+                  },
+                ]}
+              >
+                <Text style={styles.dateTimeText}>Cash (Pay at pickup)</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ height: 100 }} />
+          </View>
+        )}
       </ScrollView>
 
-      {/* Bottom Bar */}
+      {/* Date/Time Pickers */}
+      {showStartDatePicker && (
+        <DateTimePicker
+          value={startDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onStartDateChange}
+          minimumDate={new Date()}
+        />
+      )}
+
+      {showStartTimePicker && (
+        <DateTimePicker
+          value={startDate}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onStartTimeChange}
+        />
+      )}
+
+      {showEndDatePicker && (
+        <DateTimePicker
+          value={endDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onEndDateChange}
+          minimumDate={startDate}
+        />
+      )}
+
+      {showEndTimePicker && (
+        <DateTimePicker
+          value={endDate}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onEndTimeChange}
+        />
+      )}
+
+      {/* Bottom Action */}
       <View style={styles.bottomBar}>
+        <View style={styles.bottomPriceContainer}>
+          <Text style={styles.bottomPriceLabel}>Total</Text>
+          <Text style={styles.bottomPrice}>
+            {(step === 'summary' ? totalAmount : rentalFee).toLocaleString('vi-VN')}₫
+          </Text>
+        </View>
         <CustomButton
-          title="$1400   Pay Now"
-          onPress={() => {
-            router.push({
-              pathname: '/payment/[id]',
-              params: { id: params.id || '1' }
-            });
-          }}
-          style={styles.payButton}
+          title={
+            step === 'select' ? 'Review →' : submitting ? 'Processing...' : 'Proceed to Payment →'
+          }
+          onPress={step === 'select' ? handleContinue : handleCreateBooking}
+          style={styles.continueButton}
+          loading={submitting}
+          disabled={submitting}
         />
       </View>
-
-      {/* Date Time Pickers */}
-      <DateTimePicker
-        visible={showPickupPicker}
-        onClose={() => setShowPickupPicker(false)}
-        onConfirm={handlePickupConfirm}
-        title="Pick up Date"
-      />
-
-      <DateTimePicker
-        visible={showReturnPicker}
-        onClose={() => setShowReturnPicker(false)}
-        onConfirm={handleReturnConfirm}
-        title="Return Date"
-      />
     </View>
   );
 }
@@ -331,166 +516,172 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.text.primary,
   },
-  moreButton: {
+  placeholder: {
     width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-  },
-  stepContainer: {
-    alignItems: 'center',
-  },
-  stepDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#E5E5E5',
-    marginBottom: 4,
-  },
-  stepActive: {
-    backgroundColor: theme.colors.text.primary,
-  },
-  stepLabel: {
-    fontSize: 10,
-    color: theme.colors.text.secondary,
-  },
-  stepLabelActive: {
-    color: theme.colors.text.primary,
-    fontWeight: '600',
-  },
-  stepLine: {
-    height: 2,
-    flex: 1,
-    backgroundColor: '#E5E5E5',
-    marginHorizontal: 8,
-    marginBottom: 16,
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
   },
-  card: {
-    backgroundColor: theme.colors.background.paper,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  cardTitle: {
+  errorText: {
     fontSize: 16,
-    fontWeight: '600',
+    color: theme.colors.error,
+  },
+  vehicleCard: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.background.paper,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+  },
+  vehicleImage: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.borderRadius.md,
+    marginRight: theme.spacing.md,
+  },
+  vehicleInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  vehicleName: {
+    fontSize: 16,
+    fontWeight: '700',
     color: theme.colors.text.primary,
     marginBottom: 4,
   },
-  cardSubtitle: {
+  vehicleDetails: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
+  },
+  vehicleSpecs: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  spec: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  specText: {
     fontSize: 12,
     color: theme.colors.text.secondary,
   },
-  inputContainer: {
+  section: {
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 56,
-    backgroundColor: theme.colors.background.paper,
-    borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-  },
-  inputIcon: {
-    marginRight: theme.spacing.sm,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: theme.colors.text.primary,
-  },
-  section: {
-    marginBottom: theme.spacing.lg,
+    gap: theme.spacing.sm,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
   },
-  optionsRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  optionButton: {
-    flex: 1,
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  stationCard: {
     backgroundColor: theme.colors.background.paper,
     borderRadius: theme.borderRadius.lg,
-    gap: 6,
+    padding: theme.spacing.md,
   },
-  optionButtonActive: {
-    backgroundColor: theme.colors.text.primary,
+  stationName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: 4,
   },
-  optionText: {
+  stationAddress: {
     fontSize: 14,
     color: theme.colors.text.secondary,
+    lineHeight: 20,
   },
-  optionTextActive: {
-    color: theme.colors.text.inverse,
-    fontWeight: '600',
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
-  dateContainer: {
-    flex: 1,
-  },
-  dateLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  dateInput: {
+  dateTimeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
+    justifyContent: 'space-between',
     backgroundColor: theme.colors.background.paper,
     borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.md,
-    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
-  dateText: {
-    fontSize: 12,
+  dateTimeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  dateTimeText: {
+    fontSize: 14,
+    fontWeight: '500',
     color: theme.colors.text.primary,
   },
+  durationCard: {
+    backgroundColor: theme.colors.primary.main,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  durationLabel: {
+    fontSize: 14,
+    color: theme.colors.text.inverse,
+  },
+  durationValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.text.inverse,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginVertical: theme.spacing.sm,
+  },
+  estimatedLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.inverse,
+  },
+  estimatedPrice: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.text.inverse,
+  },
   bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     backgroundColor: theme.colors.background.default,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border.light,
   },
-  payButton: {
-    height: 56,
+  bottomPriceContainer: {
+    flex: 1,
+  },
+  bottomPriceLabel: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginBottom: 2,
+  },
+  bottomPrice: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+  },
+  continueButton: {
+    flex: 1,
+    marginLeft: theme.spacing.md,
   },
 });
-
-export default function BookingDetailsScreen() {
-  return (
-    <ProtectedRoute>
-      <BookingDetailsContent />
-    </ProtectedRoute>
-  );
-}

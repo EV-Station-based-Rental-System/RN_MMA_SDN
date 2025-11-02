@@ -15,15 +15,12 @@ import { useState, useEffect } from 'react';
 import { theme } from '@/src/theme';
 import { CustomButton } from '@/src/components';
 import VehicleService from '@/src/api/vehicle.api';
-import type { components } from '@/src/api/generated/openapi-types';
+import type { VehicleWithPricingAndStation } from '@/src/types/api.types';
 
 const { width } = Dimensions.get('window');
 
-type VehicleFromAPI = components['schemas']['VehicleWithPricingAndStation'];
-
-interface VehicleWithId extends Omit<VehicleFromAPI, 'station_id'> {
+interface VehicleWithId extends VehicleWithPricingAndStation {
   _id?: string;
-  station_id?: string;
 }
 
 export default function CarDetailsScreen() {
@@ -35,18 +32,18 @@ export default function CarDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadVehicleDetails();
-  }, [vehicleId]);
-
   const loadVehicleDetails = async () => {
     try {
       setLoading(true);
       setError(null);
+<<<<<<< HEAD
       console.log('Loading vehicle details for ID:', vehicleId);
       console.log('API endpoint will be:', `/vehicle/${vehicleId}`);
       const data = await VehicleService.findOne(vehicleId);
       console.log('Vehicle details loaded:', data);
+=======
+      const data = await VehicleService.getVehicleById(vehicleId);
+>>>>>>> origin/main
       setVehicle(data as VehicleWithId);
     } catch (err: any) {
       console.error('Load vehicle details error:', err);
@@ -57,6 +54,11 @@ export default function CarDetailsScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadVehicleDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleId]);
 
   if (loading) {
     return (
@@ -229,22 +231,22 @@ export default function CarDetailsScreen() {
               <View style={styles.pricingCard}>
                 <View style={styles.pricingRow}>
                   <Text style={styles.pricingLabel}>Hourly Rate</Text>
-                  <Text style={styles.pricingValue}>${vehicle.pricing.price_per_hour}/hr</Text>
+                  <Text style={styles.pricingValue}>{vehicle.pricing.price_per_hour.toLocaleString('vi-VN')}₫/hr</Text>
                 </View>
                 {vehicle.pricing.price_per_day && (
                   <View style={styles.pricingRow}>
                     <Text style={styles.pricingLabel}>Daily Rate</Text>
-                    <Text style={styles.pricingValue}>${vehicle.pricing.price_per_day}/day</Text>
+                    <Text style={styles.pricingValue}>{vehicle.pricing.price_per_day.toLocaleString('vi-VN')}₫/day</Text>
                   </View>
                 )}
                 <View style={styles.pricingRow}>
                   <Text style={styles.pricingLabel}>Deposit</Text>
-                  <Text style={styles.pricingValue}>${vehicle.pricing.deposit_amount}</Text>
+                  <Text style={styles.pricingValue}>{vehicle.pricing.deposit_amount.toLocaleString('vi-VN')}₫</Text>
                 </View>
                 {vehicle.pricing.late_return_fee_per_hour && (
                   <View style={styles.pricingRow}>
                     <Text style={styles.pricingLabel}>Late Return Fee</Text>
-                    <Text style={styles.pricingValue}>${vehicle.pricing.late_return_fee_per_hour}/hr</Text>
+                    <Text style={styles.pricingValue}>{vehicle.pricing.late_return_fee_per_hour.toLocaleString('vi-VN')}₫/hr</Text>
                   </View>
                 )}
                 {vehicle.pricing.mileage_limit_per_day && (
@@ -256,7 +258,7 @@ export default function CarDetailsScreen() {
                 {vehicle.pricing.excess_mileage_fee && (
                   <View style={styles.pricingRow}>
                     <Text style={styles.pricingLabel}>Excess Mileage Fee</Text>
-                    <Text style={styles.pricingValue}>${vehicle.pricing.excess_mileage_fee}/km</Text>
+                    <Text style={styles.pricingValue}>{vehicle.pricing.excess_mileage_fee.toLocaleString('vi-VN')}₫/km</Text>
                   </View>
                 )}
               </View>
@@ -272,7 +274,7 @@ export default function CarDetailsScreen() {
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Starting from</Text>
           <Text style={styles.price}>
-            ${vehicle.pricing?.price_per_hour || 0}/hr
+            {(vehicle.pricing?.price_per_hour || 0).toLocaleString('vi-VN')}₫/hr
           </Text>
         </View>
         <CustomButton
