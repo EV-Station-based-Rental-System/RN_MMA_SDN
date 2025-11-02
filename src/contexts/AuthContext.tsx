@@ -93,9 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log('🔄 Refreshing user data for ID:', userId);
       
-      // UserService.findOne returns an Axios response; extract .data which is the actual user object
-      const userResponse = await UserService.findOne(userId);
-      const userData = userResponse?.data ?? userResponse;
+  // UserService.findOne returns an Axios response; some backends wrap payload in { data: { ... } }
+  const userResponse = await UserService.findOne(userId);
+  // Normalize: try response.data.data, then response.data, then response itself
+  const userData = userResponse?.data?.data ?? userResponse?.data ?? userResponse;
       console.log('✅ User data refreshed (raw response):', userResponse);
       console.log('✅ User data refreshed (extracted):', userData);
       console.log('🆔 User ID from API response:', userData?._id || userData?.id);

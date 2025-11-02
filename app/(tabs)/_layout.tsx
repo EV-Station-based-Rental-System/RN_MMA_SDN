@@ -7,7 +7,7 @@ import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
-import { HomeIcon, SearchIcon, BookmarkIcon, ProfileIcon } from '@/src/components';
+import { HomeIcon, BookmarkIcon, ProfileIcon, HeartIcon } from '@/src/components';
 
 // Custom tab bar icon with circular background
 function TabBarIcon({ name, color, focused }: { name: any; color: string; focused: boolean }) {
@@ -20,11 +20,11 @@ function TabBarIcon({ name, color, focused }: { name: any; color: string; focuse
     );
   }
   
-  // Use custom SearchIcon for search tab
-  if (name === 'search' || name === 'search-outline') {
+  // Use custom HeartIcon for favorites tab
+  if (name === 'heart' || name === 'heart-outline') {
     return (
       <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-        <SearchIcon color={color} size={22} filled={focused} />
+        <HeartIcon color={color} size={26} filled={focused} />
       </View>
     );
   }
@@ -91,6 +91,9 @@ export default function TabsLayout() {
           marginTop: 4,
         },
         tabBarShowLabel: false,
+        // Smooth animations khi chuyển tabs
+        animation: 'shift',
+        lazy: true,
       }}
     >
       <Tabs.Screen
@@ -103,11 +106,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="favorites"
         options={{
-          title: 'Explore',
+          title: 'Favorites',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? "search" : "search-outline"} color={color} focused={focused} />
+            <TabBarIcon name={focused ? "heart" : "heart-outline"} color={color} focused={focused} />
           ),
         }}
       />

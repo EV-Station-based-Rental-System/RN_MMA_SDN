@@ -52,6 +52,8 @@ export const colors = {
   // Gradient (cho welcome screen)
   gradient: {
     overlay: ['rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.7)'],
+    // Primary black gradient - used for buttons / accents where a richer black is desired
+    primary: ['#000000', '#1A1A1A'],
   },
 } as const;
 

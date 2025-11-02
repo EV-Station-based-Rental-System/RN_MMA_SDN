@@ -9,26 +9,35 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Image,
   StatusBar,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { theme } from '@/src/theme';
-import { CarCard, BrandIcon, BellIcon } from '@/src/components';
-import { useAuth } from '@/src/contexts/AuthContext';
+import { CarCard, BrandIcon, BellIcon, SwipeableTabs } from '@/src/components';
+import { useFavorites } from '@/src/contexts/FavoritesContext';
 import VehicleService from '@/src/api/vehicle.api';
-import type { components } from '@/src/api/generated/openapi-types';
 
-type VehicleFromAPI = components['schemas']['VehicleWithPricingAndStation'];
-
-// Extend type to handle runtime _id field from MongoDB
-interface VehicleWithId extends Omit<VehicleFromAPI, 'station_id'> {
+// Vehicle type with flexible structure
+interface VehicleWithId {
   _id?: string;
-  station_id?: string;
+  vin_number?: string;
+  search?: string;
+  model?: string;
+  img_url?: string;
+  station?: {
+    name?: string;
+  };
+  pricing?: {
+    price_per_hour?: number;
+  };
+  is_active?: boolean;
+  status?: string;
+  model_year?: number;
+  [key: string]: any;
 }
 
 // Get current time
@@ -49,82 +58,98 @@ const BRANDS = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { toggleFavorite, isFavorite } = useFavorites();
   
   const [vehicles, setVehicles] = useState<VehicleWithId[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available'>('all'); // 'all' = available + pending, 'available' = only available
 
-  // Fetch vehicles on mount
+  // Fetch vehicles on mount and when search/filters change
   useEffect(() => {
     loadVehicles();
-  }, []);
+  }, [searchQuery, selectedYear, statusFilter]);
+
+  // Reset search when screen loses focus (user navigates away)
+  useFocusEffect(
+    useCallback(() => {
+      // Reset search when returning to this screen
+      return () => {
+        setSearchQuery('');
+        setSelectedYear('');
+        setShowFilters(false);
+        setStatusFilter('all');
+      };
+    }, [])
+  );
 
   const loadVehicles = async () => {
     try {
       setLoading(true);
       setError(null);
-      // Request active vehicles with available status from backend
-      const response = await VehicleService.findAll({ page: 1, take: 50, is_active: true, status: 'available' });
-      console.log('Vehicles response:', JSON.stringify(response, null, 2));
+      
+      // Build query params with filters
+      const params: any = { 
+        page: 1, 
+        take: 100,
+        is_active: true,
+      };
+      
+      // Build search string from search query and year filter
+      const searchParts: string[] = [];
+      if (searchQuery.trim()) searchParts.push(searchQuery.trim());
+      if (selectedYear) searchParts.push(selectedYear);
+      
+      // Add search param if any filter is active
+      if (searchParts.length > 0) {
+        params.search = searchParts.join(' ');
+      }
+      
+      console.log('🔍 Loading vehicles with params:', params);
+      
+      const response = await VehicleService.findAll(params);
+      console.log('📦 Vehicles response:', JSON.stringify(response, null, 2));
 
-      // Ensure we only surface vehicles that are active and available (safety-net filter)
+      // Filter vehicles: active AND (available OR pending_booking) - CLIENT SIDE
       const rawData = (response.data || []) as any[];
       const filtered = rawData.filter((v) => {
         const isActive = v?.is_active === true || v?.isActive === true;
         const status = (v?.status || v?.state || '').toString().toLowerCase();
-        const isAvailable = status === 'available';
-        return isActive && isAvailable;
+        
+        // Apply status filter
+        if (statusFilter === 'available') {
+          // Only available
+          return isActive && status === 'available';
+        } else {
+          // All: available OR pending_booking
+          const isAvailableOrPending = status === 'available' || status === 'pending_booking';
+          return isActive && isAvailableOrPending;
+        }
       });
 
-      console.log('Filtered vehicles (active & available):', filtered.length);
+      console.log('✅ Filtered vehicles (active & status filter):', filtered.length);
       setVehicles(filtered as VehicleWithId[]);
     } catch (err) {
-      console.error('Load vehicles error:', err);
+      console.error('❌ Load vehicles error:', err);
       setError('Failed to load vehicles. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/(auth)/login');
-            } catch (error) {
-              console.error('Logout error:', error);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleAvatarPress = () => {
-    if (!isAuthenticated) {
-      router.push('/(auth)/login');
-    } else {
-      // TODO: Navigate to profile
-      Alert.alert('Profile', `Logged in as: ${user?.email}`);
-    }
-  };
-
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
+    <SwipeableTabs>
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -132,7 +157,7 @@ export default function HomeScreen() {
               <View style={styles.logoCircle}>
                 <Ionicons name="car-sport" size={18} color={theme.colors.text.inverse} />
               </View>
-              <Text style={styles.logoText}>Qent</Text>
+              <Text style={styles.logoText}>EVN</Text>
             </View>
 
             <View style={styles.headerIcons}>
@@ -141,25 +166,6 @@ export default function HomeScreen() {
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>2</Text>
                 </View>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.iconButton} 
-                onPress={handleAvatarPress}
-                onLongPress={isAuthenticated ? handleLogout : undefined}
-              >
-                {isAuthenticated ? (
-                  <View style={styles.avatarContainer}>
-                    <Image
-                      source={{ uri: 'https://i.pravatar.cc/100' }}
-                      style={styles.avatar}
-                    />
-                    <View style={styles.onlineBadge} />
-                  </View>
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                    <Ionicons name="person-outline" size={16} color={theme.colors.text.secondary} />
-                  </View>
-                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -170,14 +176,86 @@ export default function HomeScreen() {
               <Ionicons name="search-outline" size={20} color={theme.colors.text.secondary} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search your dream car..."
+                placeholder="Search by brand, model, etc..."
                 placeholderTextColor={theme.colors.text.placeholder}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
               />
             </View>
-            <TouchableOpacity style={styles.filterButton}>
-              <Ionicons name="options-outline" size={20} color={theme.colors.text.primary} />
+            <TouchableOpacity 
+              style={[styles.filterButton, showFilters && styles.filterButtonActive]}
+              onPress={() => setShowFilters(!showFilters)}
+            >
+              <Ionicons name="options-outline" size={20} color={showFilters ? theme.colors.text.inverse : theme.colors.text.primary} />
             </TouchableOpacity>
           </View>
+
+          {/* Filters Panel */}
+          {showFilters && (
+            <View style={styles.filtersPanel}>
+              <Text style={styles.filtersPanelTitle}>Filters</Text>
+              
+              {/* Status Filter */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>Status</Text>
+                <View style={styles.statusFilterContainer}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.statusFilterButton,
+                      statusFilter === 'all' && styles.statusFilterButtonActive
+                    ]}
+                    onPress={() => setStatusFilter('all')}
+                  >
+                    <Text style={[
+                      styles.statusFilterText,
+                      statusFilter === 'all' && styles.statusFilterTextActive
+                    ]}>
+                      All Vehicles
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[
+                      styles.statusFilterButton,
+                      statusFilter === 'available' && styles.statusFilterButtonActive
+                    ]}
+                    onPress={() => setStatusFilter('available')}
+                  >
+                    <Text style={[
+                      styles.statusFilterText,
+                      statusFilter === 'available' && styles.statusFilterTextActive
+                    ]}>
+                      Available Only
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Year Filter */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>Year</Text>
+                <TextInput
+                  style={styles.filterInput}
+                  placeholder="e.g., 2024, 2025"
+                  placeholderTextColor={theme.colors.text.placeholder}
+                  value={selectedYear}
+                  onChangeText={setSelectedYear}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              {/* Clear Filters Button */}
+              <TouchableOpacity 
+                style={styles.clearFiltersButton}
+                onPress={() => {
+                  setSelectedYear('');
+                  setStatusFilter('all');
+                }}
+              >
+                <Text style={styles.clearFiltersText}>Clear All Filters</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Brands Section */}
@@ -195,7 +273,7 @@ export default function HomeScreen() {
                 key={brand.id}
                 name={brand.name}
                 icon={brand.icon}
-                onPress={() => {}}
+                onPress={() => setSearchQuery(brand.name)}
               />
             ))}
           </ScrollView>
@@ -218,7 +296,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Available Vehicles Section */}
+        {/* Available Vehicles Section - Grid 2 columns */}
         {!loading && !error && vehicles.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -232,35 +310,34 @@ export default function HomeScreen() {
               <Text style={styles.availableLabel}>{vehicles.length} vehicles available</Text>
             </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.carsContainer}
-            >
+            {/* Grid Container - 2 columns */}
+            <View style={styles.gridContainer}>
               {vehicles.map((vehicle, index) => {
                 // Try to get _id from vehicle object, fallback to index
                 const vehicleId = (vehicle as any)?._id || vehicle.vin_number || `vehicle-${index}`;
                 console.log('Vehicle ID for card:', vehicleId, 'Full vehicle:', vehicle);
                 
                 return (
-                  <CarCard
-                    key={vehicleId}
-                    id={vehicleId}
-                    name={`${vehicle.make} ${vehicle.model}`}
-                    rating={4.5}
-                    location={vehicle.station?.name || 'Unknown'}
-                    price={vehicle.pricing?.price_per_hour || 0}
-                    seats={4}
-                    imageUrl={vehicle.img_url || 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400'}
-                    onPress={() => {
-                      console.log('Navigating to vehicle:', vehicleId);
-                      router.push(`/car/${vehicleId}`);
-                    }}
-                    onFavorite={() => {}}
-                  />
+                  <View key={vehicleId} style={styles.cardWrapper}>
+                    <CarCard
+                      id={vehicleId}
+                      name={`${vehicle.make} ${vehicle.model}`}
+                      rating={4.5}
+                      location={vehicle.station?.name || 'Unknown'}
+                      price={vehicle.pricing?.price_per_hour || 0}
+                      seats={4}
+                      imageUrl={vehicle.img_url || 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400'}
+                      onPress={() => {
+                        console.log('Navigating to vehicle:', vehicleId);
+                        router.push(`/car/${vehicleId}`);
+                      }}
+                      onFavorite={() => toggleFavorite(vehicleId)}
+                      isFavorite={isFavorite(vehicleId)}
+                    />
+                  </View>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
         )}
 
@@ -277,6 +354,7 @@ export default function HomeScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
     </View>
+    </SwipeableTabs>
   );
 }
 
@@ -341,30 +419,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.text.inverse,
   },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatarPlaceholder: {
-    backgroundColor: theme.colors.background.paper,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  onlineBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#4CAF50',
-    borderWidth: 2,
-    borderColor: theme.colors.background.default,
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -392,6 +446,80 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  filterButtonActive: {
+    backgroundColor: theme.colors.primary.main,
+  },
+  filtersPanel: {
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+  },
+  filtersPanelTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+  },
+  filterGroup: {
+    marginBottom: theme.spacing.md,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  filterInput: {
+    height: 44,
+    backgroundColor: theme.colors.background.default,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    fontSize: 14,
+    color: theme.colors.text.primary,
+    borderWidth: 1,
+    borderColor: theme.colors.background.paper,
+  },
+  statusFilterContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  statusFilterButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.background.default,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+  },
+  statusFilterButtonActive: {
+    backgroundColor: theme.colors.primary.main,
+    borderColor: theme.colors.primary.main,
+  },
+  statusFilterText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: theme.colors.text.secondary,
+  },
+  statusFilterTextActive: {
+    color: theme.colors.text.inverse,
+    fontWeight: '600',
+  },
+  clearFiltersButton: {
+    marginTop: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.background.default,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
   },
   section: {
     marginTop: theme.spacing.lg,
@@ -422,6 +550,17 @@ const styles = StyleSheet.create({
   availableLabel: {
     fontSize: 12,
     color: theme.colors.text.secondary,
+  },
+  gridContainer: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  cardWrapper: {
+    marginBottom: theme.spacing.lg,
+    width: '48%',
   },
   carsContainer: {
     paddingHorizontal: theme.spacing.lg,
@@ -470,3 +609,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text.inverse,
   },
 });
+

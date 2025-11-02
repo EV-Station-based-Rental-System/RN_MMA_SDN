@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { theme } from '@/src/theme';
+import { SwipeableTabs } from '@/src/components';
 import { useAuth } from '@/src/contexts/AuthContext';
 import KycService from '@/src/api/kyc.api';
 import UserService from '@/src/api/user.api';
@@ -61,38 +62,64 @@ export default function ProfileScreen() {
       userEmail: user?.email,
       isLoading
     });
+    
+    // Debug: Log full user object to check roleExtra
+    if (user) {
+      console.log('🔍 Full user object:', JSON.stringify(user, null, 2));
+      console.log('🔍 User roleExtra:', (user as any)?.roleExtra);
+      console.log('🔍 Address from roleExtra:', (user as any)?.roleExtra?.address);
+      console.log('🔍 Address from top-level:', (user as any)?.address);
+      console.log('🔍 DOB from roleExtra:', (user as any)?.roleExtra?.date_of_birth);
+      console.log('🔍 DOB from top-level:', (user as any)?.date_of_birth);
+    }
   }, [user, userId, isLoading]);
 
-  // Load KYC data when user is available
+  // Load FULL user data (with roleExtra) and KYC data when userId is available
   useEffect(() => {
-    const loadKycData = async () => {
-      if (!user || !userId) return;
+    const loadUserAndKycData = async () => {
+      if (!userId) return;
 
       try {
         setKycLoading(true);
-        console.log('🔍 Loading KYC data for user:', userId);
-        
-        // Get user data which includes KYC information
+        console.log('🔍 Loading FULL user data (including roleExtra) for user:', userId);
+
+        // Get FULL user data from API (includes roleExtra and KYC)
         const userResponse = await UserService.findOne(userId);
-        const userData = userResponse.data;
+        console.log('📋 Raw API response:', userResponse);
         
-        if (userData?.kycs) {
-          console.log('✅ Found existing KYC data:', userData.kycs);
-          setKycData(userData.kycs as any);
+        // Normalize nested response shapes: response.data.data || response.data || response
+        const userData = userResponse?.data?.data ?? userResponse?.data ?? userResponse;
+        const actualUser = (userData && userData.data) ? userData.data : userData;
+        
+        console.log('👤 Extracted user object:', actualUser);
+        console.log('🔍 User roleExtra from API:', actualUser?.roleExtra);
+        console.log('🔍 Address from API roleExtra:', actualUser?.roleExtra?.address);
+        console.log('🔍 DOB from API roleExtra:', actualUser?.roleExtra?.date_of_birth);
+
+        // *** CRITICAL: Update user in AuthContext with FULL data from API ***
+        if (actualUser) {
+          console.log('🔄 Updating AuthContext user with FULL data from API (including roleExtra)');
+          await refreshUser(); // This will fetch and update user in context + storage
+        }
+
+        // Extract KYC data
+        if (actualUser?.kycs) {
+          console.log('✅ Found existing KYC data:', actualUser.kycs);
+          setKycData(actualUser.kycs as any);
         } else {
           console.log('ℹ️ No KYC data found for user');
           setKycData(null);
         }
       } catch (error) {
-        console.error('❌ Failed to load KYC data:', error);
+        console.error('❌ Failed to load user/KYC data:', error);
         setKycData(null);
       } finally {
         setKycLoading(false);
       }
     };
 
-    loadKycData();
-  }, [user, userId]);
+    loadUserAndKycData();
+  }, [userId]); // Only depend on userId, not user (to avoid infinite loop)
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -121,10 +148,11 @@ export default function ProfileScreen() {
 
   const handleEditProfile = () => {
     // Open edit modal and prefill with current user data
+    const roleExtra = (user as any)?.roleExtra ?? {};
     setEditFullName(user?.full_name || '');
     setEditPhone((user as any)?.phone_number || (user as any)?.phone || '');
-    setEditAddress((user as any)?.address || '');
-    setEditDob((user as any)?.date_of_birth || (user as any)?.dob || '');
+    setEditAddress(roleExtra?.address ?? (user as any)?.address ?? '');
+    setEditDob(roleExtra?.date_of_birth ?? (user as any)?.date_of_birth ?? (user as any)?.dob ?? '');
     setShowEditModal(true);
   };
 
@@ -152,9 +180,15 @@ export default function ProfileScreen() {
       const payload: any = {
         full_name: editFullName.trim(),
       };
-      if (editPhone.trim()) payload.phone_number = editPhone.trim();
-      if (editAddress.trim()) payload.address = editAddress.trim();
-      if (editDob.trim()) payload.date_of_birth = editDob.trim();
+  if (editPhone.trim()) payload.phone_number = editPhone.trim();
+  if (editAddress.trim()) payload.address = editAddress.trim();
+  if (editDob.trim()) payload.date_of_birth = editDob.trim();
+
+  // Also include roleExtra for backends that store profile fields under roleExtra
+  const roleExtraPayload: any = {};
+  if (editAddress.trim()) roleExtraPayload.address = editAddress.trim();
+  if (editDob.trim()) roleExtraPayload.date_of_birth = editDob.trim();
+  if (Object.keys(roleExtraPayload).length > 0) payload.roleExtra = roleExtraPayload;
 
       console.log('✏️ Updating renter profile for:', userId, payload);
       await UserService.updateRenter(userId, payload);
@@ -240,10 +274,11 @@ export default function ProfileScreen() {
         try {
           const userResponse = await UserService.findOne(userId);
           console.log('📋 User response received:', userResponse);
-          console.log('👤 User data from API:', userResponse.data);
-          console.log('🆔 User ID from API response:', userResponse.data?._id || userResponse.data?.id);
-
-          const updatedUser = userResponse.data;
+          // Normalize nested response shapes
+          const userData = userResponse?.data?.data ?? userResponse?.data ?? userResponse;
+          const updatedUser = (userData && userData.data) ? userData.data : userData;
+          console.log('👤 Resolved user object from API:', updatedUser);
+          console.log('🆔 User ID from API response:', updatedUser?._id || updatedUser?.id);
 
           // Extract KYC data from user response
           if (updatedUser?.kycs) {
@@ -364,12 +399,13 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <SwipeableTabs>
+      <ScrollView 
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       {/* Header with back button and menu */}
       <View style={styles.topBar}>
         <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
@@ -379,25 +415,6 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.iconButton}>
           <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
-      </View>
-
-      {/* Address & DOB - show under KYC */}
-      <View style={[styles.section, { paddingTop: theme.spacing.sm }] }>
-        <View style={{ paddingHorizontal: theme.spacing.lg }}>
-          {(user as any)?.address ? (
-            <View style={{ marginBottom: theme.spacing.md }}>
-              <Text style={[styles.sectionTitle, { fontSize: 14, fontWeight: '600' }]}>Address</Text>
-              <Text style={[styles.userEmail, { marginTop: 6 }]}>{(user as any).address}</Text>
-            </View>
-          ) : null}
-
-          {(user as any)?.date_of_birth ? (
-            <View>
-              <Text style={[styles.sectionTitle, { fontSize: 14, fontWeight: '600' }]}>Date of Birth</Text>
-              <Text style={[styles.userEmail, { marginTop: 6 }]}> {new Date((user as any).date_of_birth).toLocaleDateString()}</Text>
-            </View>
-          ) : null}
-        </View>
       </View>
 
       {/* User Profile Section */}
@@ -416,12 +433,6 @@ export default function ProfileScreen() {
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{user.full_name || 'User'}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
-          {(user as any)?.address ? (
-            <Text style={[styles.userEmail, { marginTop: 6 }]}>{(user as any).address}</Text>
-          ) : null}
-          {(user as any)?.date_of_birth ? (
-            <Text style={[styles.userEmail, { marginTop: 4 }]}>DOB: {new Date((user as any).date_of_birth).toLocaleDateString()}</Text>
-          ) : null}
         </View>
 
         <TouchableOpacity style={styles.editProfileButton} onPress={handleEditProfile}>
@@ -537,7 +548,60 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* Only keep KYC and Logout - simplified section */}
+      {/* Address & DOB Section - Below KYC */}
+      {(((user as any)?.roleExtra?.address ?? (user as any)?.address) || 
+        ((user as any)?.roleExtra?.date_of_birth ?? (user as any)?.date_of_birth) ||
+        ((user as any)?.phone_number ?? (user as any)?.phone)) && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <View style={styles.infoCard}>
+            {((user as any)?.roleExtra?.address ?? (user as any)?.address) && (
+              <View style={styles.infoRow}>
+                <Ionicons name="location-outline" size={20} color={theme.colors.text.secondary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Address</Text>
+                  <Text style={styles.infoValue}>
+                    {(user as any)?.roleExtra?.address ?? (user as any)?.address}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {((user as any)?.phone_number ?? (user as any)?.phone) && (
+              <View style={[
+                styles.infoRow, 
+                ((user as any)?.roleExtra?.address ?? (user as any)?.address) && { marginTop: theme.spacing.md }
+              ]}>
+                <Ionicons name="call-outline" size={20} color={theme.colors.text.secondary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Phone Number</Text>
+                  <Text style={styles.infoValue}>
+                    {(user as any)?.phone_number ?? (user as any)?.phone}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {((user as any)?.roleExtra?.date_of_birth ?? (user as any)?.date_of_birth) && (
+              <View style={[
+                styles.infoRow, 
+                (((user as any)?.roleExtra?.address ?? (user as any)?.address) || 
+                 ((user as any)?.phone_number ?? (user as any)?.phone)) && { marginTop: theme.spacing.md }
+              ]}>
+                <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Date of Birth</Text>
+                  <Text style={styles.infoValue}>
+                    {new Date((user as any)?.roleExtra?.date_of_birth ?? (user as any)?.date_of_birth).toLocaleDateString()}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Logout Section */}
       <View style={styles.section}>
         <View style={{ paddingHorizontal: theme.spacing.lg }}>
           <TouchableOpacity style={[styles.menuItem, { paddingVertical: theme.spacing.lg }]} onPress={handleLogout}>
@@ -774,6 +838,7 @@ export default function ProfileScreen() {
         </View>
       </Modal>
     </ScrollView>
+    </SwipeableTabs>
   );
 }
 
@@ -1039,6 +1104,31 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Personal Information Card Styles
+  infoCard: {
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  infoContent: {
+    marginLeft: theme.spacing.md,
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
+    marginBottom: 4,
+  },
+  infoValue: {
+    fontSize: 15,
+    color: theme.colors.text.primary,
+    lineHeight: 22,
   },
   // Modal Styles
   modalOverlay: {

@@ -4,8 +4,8 @@
 
 import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/theme';
+import { Logo } from '@/src/components';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -23,14 +23,12 @@ export default function WelcomeScreen() {
       >
         <View style={styles.overlay}>
           <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="car-sport" size={32} color={theme.colors.text.inverse} />
-            </View>
+            <Logo size="medium" variant="secondary" />
           </View>
 
           <View style={styles.content}>
             <Text style={styles.title}>Welcome to</Text>
-            <Text style={styles.appName}>Qent</Text>
+            <Text style={styles.appName}>EVN</Text>
           </View>
 
           <View style={styles.footer}>
@@ -59,14 +57,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     paddingTop: 60,
     paddingLeft: theme.spacing.lg,
-  },
-  logoCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.secondary.main,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
     flex: 1,

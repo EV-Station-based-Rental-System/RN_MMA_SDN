@@ -3,7 +3,9 @@
  */
 
 import { Stack } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '@/src/contexts/AuthContext';
+import { FavoritesProvider } from '@/src/contexts/FavoritesContext';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -28,22 +30,44 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="car/[id]" />
-        <Stack.Screen name="booking/[id]" />
-        <Stack.Screen name="confirmation/[id]" />
-        <Stack.Screen name="payment" />
-        <Stack.Screen name="success" />
-      </Stack>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <FavoritesProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'fade',
+              animationDuration: 250,
+            }}
+          >
+          <Stack.Screen 
+            name="index"
+            options={{
+              animation: 'fade',
+            }}
+          />
+          <Stack.Screen 
+            name="(auth)"
+            options={{
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen 
+            name="(tabs)"
+            options={{
+              animation: 'fade',
+            }}
+          />
+          <Stack.Screen name="car/[id]" />
+          <Stack.Screen name="booking/[id]" />
+          <Stack.Screen name="booking-details/[id]" />
+          <Stack.Screen name="confirmation/[id]" />
+          <Stack.Screen name="payment" />
+          <Stack.Screen name="success" />
+        </Stack>
+      </FavoritesProvider>
     </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

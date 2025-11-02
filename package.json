@@ -22,6 +22,7 @@
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "axios": "^1.13.1",
+    "date-fns": "^4.1.0",
     "expo": "~54.0.13",
     "expo-constants": "~18.0.9",
     "expo-dev-client": "~6.0.16",
@@ -52,12 +53,12 @@
     "undefined": "react-native-svg\\"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.4.22",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
-    "typescript": "~5.9.2",
-    "@openapitools/openapi-generator-cli": "^2.4.22",
-    "prettier": "^2.8.8"
+    "prettier": "^2.8.8",
+    "typescript": "~5.9.2"
   },
   "private": true
 }
