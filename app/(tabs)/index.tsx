@@ -12,12 +12,24 @@ import {
   Image,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useState, useEffect } from 'react';
 import { theme } from '@/src/theme';
 import { CarCard, BrandIcon, BellIcon } from '@/src/components';
 import { useAuth } from '@/src/contexts/AuthContext';
+import VehicleService from '@/src/api/vehicle.api';
+import type { components } from '@/src/api/generated/openapi-types';
+
+type VehicleFromAPI = components['schemas']['VehicleWithPricingAndStation'];
+
+// Extend type to handle runtime _id field from MongoDB
+interface VehicleWithId extends Omit<VehicleFromAPI, 'station_id'> {
+  _id?: string;
+  station_id?: string;
+}
 
 // Get current time
 const getCurrentTime = () => {
@@ -35,42 +47,34 @@ const BRANDS = [
   { id: '4', name: 'VinFast', icon: 'car-electric' },
 ];
 
-const BEST_CARS = [
-  {
-    id: '1',
-    name: 'Ferrari-FF',
-    rating: 5.0,
-    location: 'Washington DC',
-    price: 200,
-    seats: 4,
-    imageUrl: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400',
-  },
-  {
-    id: '2',
-    name: 'Tesla Model S',
-    rating: 5.0,
-    location: 'Chicago, USA',
-    price: 100,
-    seats: 5,
-    imageUrl: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=400',
-  },
-];
-
-const NEARBY_CARS = [
-  {
-    id: '3',
-    name: 'BMW M3',
-    rating: 4.8,
-    location: 'New York, USA',
-    price: 80,
-    seats: 5,
-    imageUrl: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400',
-  },
-];
-
 export default function HomeScreen() {
   const router = useRouter();
   const { user, logout, isAuthenticated } = useAuth();
+  
+  const [vehicles, setVehicles] = useState<VehicleWithId[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch vehicles on mount
+  useEffect(() => {
+    loadVehicles();
+  }, []);
+
+  const loadVehicles = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await VehicleService.getAvailableVehicles({ page: 1, take: 10 });
+      console.log('Vehicles response:', JSON.stringify(response, null, 2));
+      console.log('First vehicle:', response.data?.[0]);
+      setVehicles((response.data || []) as VehicleWithId[]);
+    } catch (err) {
+      console.error('Load vehicles error:', err);
+      setError('Failed to load vehicles. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -186,59 +190,78 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Best Cars Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Best Cars</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAll}>View All</Text>
+        {/* Loading / Error State */}
+        {loading && (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary.main} />
+            <Text style={styles.loadingText}>Loading vehicles...</Text>
+          </View>
+        )}
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={loadVehicles} style={styles.retryButton}>
+              <Text style={styles.retryText}>Retry</Text>
             </TouchableOpacity>
           </View>
+        )}
 
-          <View style={styles.availableText}>
-            <Text style={styles.availableLabel}>Available</Text>
+        {/* Available Vehicles Section */}
+        {!loading && !error && vehicles.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Available Vehicles</Text>
+              <TouchableOpacity>
+                <Text style={styles.viewAll}>View All</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.availableText}>
+              <Text style={styles.availableLabel}>{vehicles.length} vehicles available</Text>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.carsContainer}
+            >
+              {vehicles.map((vehicle, index) => {
+                // Try to get _id from vehicle object, fallback to index
+                const vehicleId = (vehicle as any)?._id || vehicle.vin_number || `vehicle-${index}`;
+                console.log('Vehicle ID for card:', vehicleId, 'Full vehicle:', vehicle);
+                
+                return (
+                  <CarCard
+                    key={vehicleId}
+                    id={vehicleId}
+                    name={`${vehicle.make} ${vehicle.model}`}
+                    rating={4.5}
+                    location={vehicle.station?.name || 'Unknown'}
+                    price={vehicle.pricing?.price_per_hour || 0}
+                    seats={4}
+                    imageUrl={vehicle.img_url || 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400'}
+                    onPress={() => {
+                      console.log('Navigating to vehicle:', vehicleId);
+                      router.push(`/car/${vehicleId}`);
+                    }}
+                    onFavorite={() => {}}
+                  />
+                );
+              })}
+            </ScrollView>
           </View>
+        )}
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.carsContainer}
-          >
-            {BEST_CARS.map((car) => (
-              <CarCard
-                key={car.id}
-                {...car}
-                onPress={() => router.push(`/car/${car.id}`)}
-                onFavorite={() => {}}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Nearby Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Nearby</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAll}>View All</Text>
+        {!loading && !error && vehicles.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="car-outline" size={64} color={theme.colors.text.secondary} />
+            <Text style={styles.emptyText}>No vehicles available</Text>
+            <TouchableOpacity onPress={loadVehicles} style={styles.retryButton}>
+              <Text style={styles.retryText}>Refresh</Text>
             </TouchableOpacity>
           </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.carsContainer}
-          >
-            {NEARBY_CARS.map((car) => (
-              <CarCard
-                key={car.id}
-                {...car}
-                onPress={() => router.push(`/car/${car.id}`)}
-                onFavorite={() => {}}
-              />
-            ))}
-          </ScrollView>
-        </View>
+        )}
 
         <View style={{ height: 120 }} />
       </ScrollView>
@@ -391,5 +414,48 @@ const styles = StyleSheet.create({
   },
   carsContainer: {
     paddingHorizontal: theme.spacing.lg,
+  },
+  centerContainer: {
+    paddingVertical: theme.spacing['4xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+  },
+  errorContainer: {
+    paddingVertical: theme.spacing['2xl'],
+    paddingHorizontal: theme.spacing.lg,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  emptyContainer: {
+    paddingVertical: theme.spacing['4xl'],
+    paddingHorizontal: theme.spacing.lg,
+    alignItems: 'center',
+  },
+  emptyText: {
+    marginTop: theme.spacing.md,
+    fontSize: 16,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.lg,
+  },
+  retryButton: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.primary.main,
+    borderRadius: theme.borderRadius.md,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.inverse,
   },
 });

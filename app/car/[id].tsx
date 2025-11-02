@@ -6,17 +6,96 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useState, useEffect } from 'react';
 import { theme } from '@/src/theme';
 import { CustomButton } from '@/src/components';
+import VehicleService from '@/src/api/vehicle.api';
+import type { components } from '@/src/api/generated/openapi-types';
 
 const { width } = Dimensions.get('window');
+
+type VehicleFromAPI = components['schemas']['VehicleWithPricingAndStation'];
+
+interface VehicleWithId extends Omit<VehicleFromAPI, 'station_id'> {
+  _id?: string;
+  station_id?: string;
+}
 
 export default function CarDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const vehicleId = params.id as string;
+
+  const [vehicle, setVehicle] = useState<VehicleWithId | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadVehicleDetails();
+  }, [vehicleId]);
+
+  const loadVehicleDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Loading vehicle details for ID:', vehicleId);
+      console.log('API endpoint will be:', `/vehicle/${vehicleId}`);
+      const data = await VehicleService.getVehicleById(vehicleId);
+      console.log('Vehicle details loaded:', data);
+      setVehicle(data as VehicleWithId);
+    } catch (err: any) {
+      console.error('Load vehicle details error:', err);
+      console.error('Error response:', err?.response?.data);
+      console.error('Error status:', err?.response?.status);
+      setError(err?.response?.data?.message || 'Failed to load vehicle details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Car Details</Text>
+          <View style={styles.moreButton} />
+        </View>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
+          <Text style={styles.loadingText}>Loading vehicle details...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !vehicle) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Car Details</Text>
+          <View style={styles.moreButton} />
+        </View>
+        <View style={styles.centerContainer}>
+          <Ionicons name="car-outline" size={64} color={theme.colors.text.secondary} />
+          <Text style={styles.errorText}>{error || 'Vehicle not found'}</Text>
+          <TouchableOpacity onPress={loadVehicleDetails} style={styles.retryButton}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -35,7 +114,9 @@ export default function CarDetailsScreen() {
         {/* Car Images */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800' }}
+            source={{ 
+              uri: vehicle.img_url || 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800' 
+            }}
             style={styles.carImage}
             resizeMode="cover"
           />
@@ -43,133 +124,144 @@ export default function CarDetailsScreen() {
             <Ionicons name="heart-outline" size={24} color={theme.colors.error} />
           </TouchableOpacity>
           
-          {/* Image Pagination */}
-          <View style={styles.imagePagination}>
-            <View style={[styles.paginationDot, styles.paginationDotActive]} />
-            <View style={styles.paginationDot} />
-            <View style={styles.paginationDot} />
-          </View>
+          {/* Status Badge */}
+          {vehicle.status && (
+            <View style={[styles.statusBadge, getStatusBadgeStyle(vehicle.status)]}>
+              <Text style={styles.statusText}>{vehicle.status.toUpperCase()}</Text>
+            </View>
+          )}
         </View>
 
         {/* Car Info */}
         <View style={styles.content}>
-          <Text style={styles.carName}>Tesla Model S</Text>
+          <Text style={styles.carName}>{vehicle.make} {vehicle.model}</Text>
           <Text style={styles.carDescription}>
-            A car with high specs that are rented of an affordable price.
+            {vehicle.model_year} • {vehicle.category} • VIN: {vehicle.vin_number || 'N/A'}
           </Text>
 
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={16} color="#FFB800" />
-            <Text style={styles.rating}> 5.0 </Text>
-            <Text style={styles.reviews}>(100 Reviews)</Text>
+            <Text style={styles.rating}> 4.8 </Text>
+            <Text style={styles.reviews}>(Based on reviews)</Text>
           </View>
 
-          {/* Owner Info */}
-          <TouchableOpacity style={styles.ownerContainer}>
-            <Image
-              source={{ uri: 'https://i.pravatar.cc/100?img=1' }}
-              style={styles.ownerAvatar}
-            />
-            <View style={styles.ownerInfo}>
-              <Text style={styles.ownerName}>Hela Quintin</Text>
-              <View style={styles.ownerStatus}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>Online</Text>
+          {/* Station Info */}
+          {vehicle.station && (
+            <View style={styles.stationContainer}>
+              <View style={styles.stationIcon}>
+                <Ionicons name="location" size={24} color={theme.colors.primary.main} />
+              </View>
+              <View style={styles.stationInfo}>
+                <Text style={styles.stationLabel}>Pick-up Location</Text>
+                <Text style={styles.stationName}>{vehicle.station.name}</Text>
+                <Text style={styles.stationAddress}>{vehicle.station.address}</Text>
               </View>
             </View>
-            <View style={styles.ownerActions}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="call-outline" size={20} color={theme.colors.primary.main} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="chatbubble-outline" size={20} color={theme.colors.primary.main} />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+          )}
 
-          {/* Car Features */}
-          <Text style={styles.sectionTitle}>Car features</Text>
+          {/* Car Specifications */}
+          <Text style={styles.sectionTitle}>Vehicle Specifications</Text>
           <View style={styles.featuresGrid}>
             <View style={styles.featureItem}>
               <View style={styles.featureIcon}>
-                <MaterialCommunityIcons name="car-seat" size={24} color={theme.colors.primary.main} />
+                <MaterialCommunityIcons name="calendar" size={24} color={theme.colors.primary.main} />
               </View>
-              <Text style={styles.featureLabel}>Capacity</Text>
-              <Text style={styles.featureValue}>5 Seats</Text>
+              <Text style={styles.featureLabel}>Year</Text>
+              <Text style={styles.featureValue}>{vehicle.model_year}</Text>
             </View>
             
             <View style={styles.featureItem}>
               <View style={styles.featureIcon}>
-                <Ionicons name="flash" size={24} color={theme.colors.primary.main} />
+                <MaterialCommunityIcons name="car-electric" size={24} color={theme.colors.primary.main} />
               </View>
-              <Text style={styles.featureLabel}>Engine Out</Text>
-              <Text style={styles.featureValue}>670 HP</Text>
+              <Text style={styles.featureLabel}>Category</Text>
+              <Text style={styles.featureValue}>{vehicle.category}</Text>
             </View>
             
             <View style={styles.featureItem}>
               <View style={styles.featureIcon}>
-                <MaterialCommunityIcons name="speedometer" size={24} color={theme.colors.primary.main} />
+                <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary.main} />
               </View>
-              <Text style={styles.featureLabel}>Max Speed</Text>
-              <Text style={styles.featureValue}>250km/h</Text>
+              <Text style={styles.featureLabel}>Status</Text>
+              <Text style={styles.featureValue}>{vehicle.is_active ? 'Active' : 'Inactive'}</Text>
             </View>
           </View>
 
-          <View style={styles.featuresGrid}>
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <MaterialCommunityIcons name="robot" size={24} color={theme.colors.primary.main} />
-              </View>
-              <Text style={styles.featureLabel}>Advance</Text>
-              <Text style={styles.featureValue}>Auto Pilot</Text>
+          {/* Battery & Range */}
+          {(vehicle.battery_capacity_kwh || vehicle.range_km) && (
+            <View style={styles.featuresGrid}>
+              {vehicle.battery_capacity_kwh && (
+                <View style={styles.featureItem}>
+                  <View style={styles.featureIcon}>
+                    <Ionicons name="battery-charging" size={24} color={theme.colors.primary.main} />
+                  </View>
+                  <Text style={styles.featureLabel}>Battery</Text>
+                  <Text style={styles.featureValue}>{vehicle.battery_capacity_kwh} kWh</Text>
+                </View>
+              )}
+              
+              {vehicle.range_km && (
+                <View style={styles.featureItem}>
+                  <View style={styles.featureIcon}>
+                    <MaterialCommunityIcons name="map-marker-distance" size={24} color={theme.colors.primary.main} />
+                  </View>
+                  <Text style={styles.featureLabel}>Range</Text>
+                  <Text style={styles.featureValue}>{vehicle.range_km} km</Text>
+                </View>
+              )}
+              
+              {vehicle.current_mileage !== undefined && (
+                <View style={styles.featureItem}>
+                  <View style={styles.featureIcon}>
+                    <MaterialCommunityIcons name="speedometer" size={24} color={theme.colors.primary.main} />
+                  </View>
+                  <Text style={styles.featureLabel}>Mileage</Text>
+                  <Text style={styles.featureValue}>{vehicle.current_mileage} km</Text>
+                </View>
+              )}
             </View>
-            
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Ionicons name="battery-charging" size={24} color={theme.colors.primary.main} />
-              </View>
-              <Text style={styles.featureLabel}>Single Charge</Text>
-              <Text style={styles.featureValue}>405 Miles</Text>
-            </View>
-            
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <MaterialCommunityIcons name="parking" size={24} color={theme.colors.primary.main} />
-              </View>
-              <Text style={styles.featureLabel}>Advance</Text>
-              <Text style={styles.featureValue}>Auto Parking</Text>
-            </View>
-          </View>
+          )}
 
-          {/* Reviews */}
-          <View style={styles.reviewsHeader}>
-            <Text style={styles.sectionTitle}>Review (125)</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Review Item */}
-          <View style={styles.reviewItem}>
-            <View style={styles.reviewHeader}>
-              <Image
-                source={{ uri: 'https://i.pravatar.cc/100?img=2' }}
-                style={styles.reviewAvatar}
-              />
-              <View style={styles.reviewInfo}>
-                <Text style={styles.reviewName}>Mr. Jack</Text>
-                <Text style={styles.reviewDate}>Today</Text>
+          {/* Pricing Information */}
+          {vehicle.pricing && (
+            <>
+              <Text style={styles.sectionTitle}>Pricing Details</Text>
+              <View style={styles.pricingCard}>
+                <View style={styles.pricingRow}>
+                  <Text style={styles.pricingLabel}>Hourly Rate</Text>
+                  <Text style={styles.pricingValue}>${vehicle.pricing.price_per_hour}/hr</Text>
+                </View>
+                {vehicle.pricing.price_per_day && (
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>Daily Rate</Text>
+                    <Text style={styles.pricingValue}>${vehicle.pricing.price_per_day}/day</Text>
+                  </View>
+                )}
+                <View style={styles.pricingRow}>
+                  <Text style={styles.pricingLabel}>Deposit</Text>
+                  <Text style={styles.pricingValue}>${vehicle.pricing.deposit_amount}</Text>
+                </View>
+                {vehicle.pricing.late_return_fee_per_hour && (
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>Late Return Fee</Text>
+                    <Text style={styles.pricingValue}>${vehicle.pricing.late_return_fee_per_hour}/hr</Text>
+                  </View>
+                )}
+                {vehicle.pricing.mileage_limit_per_day && (
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>Daily Mileage Limit</Text>
+                    <Text style={styles.pricingValue}>{vehicle.pricing.mileage_limit_per_day} km</Text>
+                  </View>
+                )}
+                {vehicle.pricing.excess_mileage_fee && (
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>Excess Mileage Fee</Text>
+                    <Text style={styles.pricingValue}>${vehicle.pricing.excess_mileage_fee}/km</Text>
+                  </View>
+                )}
               </View>
-              <View style={styles.reviewRating}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Ionicons key={star} name="star" size={14} color="#FFB800" style={{ marginRight: 2 }} />
-                ))}
-              </View>
-            </View>
-            <Text style={styles.reviewText}>
-              The rental car was clean, reliable, and the service was quick and efficient. Overall, the experience was hassle-free and enjoyable.
-            </Text>
-          </View>
+            </>
+          )}
 
           <View style={{ height: 100 }} />
         </View>
@@ -178,23 +270,46 @@ export default function CarDetailsScreen() {
       {/* Bottom Bar */}
       <View style={styles.bottomBar}>
         <View style={styles.priceContainer}>
-          <Text style={styles.priceLabel}>Price</Text>
-          <Text style={styles.price}>$1400/Day</Text>
+          <Text style={styles.priceLabel}>Starting from</Text>
+          <Text style={styles.price}>
+            ${vehicle.pricing?.price_per_hour || 0}/hr
+          </Text>
         </View>
         <CustomButton
           title="Book Now →"
           onPress={() => {
-            router.push({
-              pathname: '/booking/[id]',
-              params: { id: params.id || '1' }
-            });
+            if (vehicle.status === 'available') {
+              router.push({
+                pathname: '/booking/[id]',
+                params: { id: vehicleId }
+              });
+            } else {
+              Alert.alert(
+                'Unavailable',
+                `This vehicle is currently ${vehicle.status}. Please choose another vehicle.`
+              );
+            }
           }}
           style={styles.bookButton}
+          disabled={vehicle.status !== 'available'}
         />
       </View>
     </View>
   );
 }
+
+const getStatusBadgeStyle = (status: string) => {
+  switch (status) {
+    case 'available':
+      return { backgroundColor: theme.colors.success };
+    case 'rented':
+      return { backgroundColor: theme.colors.error };
+    case 'maintain':
+      return { backgroundColor: theme.colors.warning };
+    default:
+      return { backgroundColor: theme.colors.text.secondary };
+  }
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -248,6 +363,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  statusBadge: {
+    position: 'absolute',
+    top: theme.spacing.md,
+    left: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.text.inverse,
+  },
   imagePagination: {
     position: 'absolute',
     bottom: theme.spacing.md,
@@ -295,6 +423,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text.secondary,
   },
+  stationContainer: {
+    flexDirection: 'row',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  stationIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary.light,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+  },
+  stationInfo: {
+    flex: 1,
+  },
+  stationLabel: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginBottom: 4,
+  },
+  stationName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: 2,
+  },
+  stationAddress: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+  },
   ownerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -328,10 +490,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: theme.colors.success,
     marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
   },
   ownerActions: {
     flexDirection: 'row',
@@ -378,6 +536,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: theme.colors.text.primary,
+    textAlign: 'center',
+  },
+  pricingCard: {
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  pricingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  pricingLabel: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+  },
+  pricingValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+  },
+  errorText: {
+    marginTop: theme.spacing.md,
+    fontSize: 16,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  retryButton: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.primary.main,
+    borderRadius: theme.borderRadius.md,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.inverse,
   },
   reviewsHeader: {
     flexDirection: 'row',
