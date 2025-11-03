@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { theme } from '@/src/theme';
-import { CarCard, BrandIcon, BellIcon, SwipeableTabs } from '@/src/components';
+import { CarCard, BrandIcon, BellIcon } from '@/src/components';
 import { useFavorites } from '@/src/contexts/FavoritesContext';
 import VehicleService from '@/src/api/vehicle.api';
 
@@ -143,15 +143,14 @@ export default function HomeScreen() {
   };
 
   return (
-    <SwipeableTabs>
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-        >
-        {/* Header */}
-        <View style={styles.header}>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+      {/* Header */}
+      <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.logoContainer}>
               <View style={styles.logoCircle}>
@@ -300,10 +299,7 @@ export default function HomeScreen() {
         {!loading && !error && vehicles.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Available Vehicles</Text>
-              <TouchableOpacity>
-                <Text style={styles.viewAll}>View All</Text>
-              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>List Vehicles</Text>
             </View>
 
             <View style={styles.availableText}>
@@ -324,7 +320,7 @@ export default function HomeScreen() {
                       name={`${vehicle.make} ${vehicle.model}`}
                       rating={4.5}
                       location={vehicle.station?.name || 'Unknown'}
-                      price={vehicle.pricing?.price_per_hour || 0}
+                      price={(vehicle as any)?.price_per_hour || vehicle.pricing?.price_per_hour || 0}
                       seats={4}
                       imageUrl={vehicle.img_url || 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400'}
                       onPress={() => {
@@ -354,7 +350,6 @@ export default function HomeScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
     </View>
-    </SwipeableTabs>
   );
 }
 

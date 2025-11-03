@@ -3,7 +3,7 @@
  * Hiển thị thông tin chi tiết của một booking
  */
 
-import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import DateBadge from '@/src/components/DateBadge';
 import { Ionicons } from '@expo/vector-icons';
 import { Booking, BookingStatus, VerificationStatus } from '@/src/types/api.types';
@@ -22,11 +22,11 @@ interface BookingCardProps {
     };
   };
   onPress?: () => void;
-  onCancel?: (bookingId: string) => void;
   onViewDetails?: (bookingId: string) => void;
+  showImage?: boolean;
 }
 
-export const BookingCard = ({ booking, onPress, onCancel, onViewDetails }: BookingCardProps) => {
+export const BookingCard = ({ booking, onPress, onViewDetails, showImage = true }: BookingCardProps) => {
   // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -50,32 +50,6 @@ export const BookingCard = ({ booking, onPress, onCancel, onViewDetails }: Booki
     } catch (error) {
       return dateString;
     }
-  };
-
-  // Kiểm tra xem có thể cancel không
-  const canCancel = booking.status === BookingStatus.PENDING_VERIFICATION || 
-                     (booking.status === BookingStatus.VERIFIED && 
-                      booking.verification_status === VerificationStatus.PENDING);
-
-  // Handle cancel booking
-  const handleCancel = () => {
-    if (!onCancel || !booking._id) return;
-
-    Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking?',
-      [
-        {
-          text: 'No',
-          style: 'cancel',
-        },
-        {
-          text: 'Cancel Booking',
-          style: 'destructive',
-          onPress: () => onCancel(booking._id!),
-        },
-      ]
-    );
   };
 
   // Handle view details
@@ -105,7 +79,7 @@ export const BookingCard = ({ booking, onPress, onCancel, onViewDetails }: Booki
       </View>
 
       {/* Vehicle Info */}
-      {booking.vehicle && (
+      {booking.vehicle && showImage ? (
         <View style={styles.vehicleInfo}>
           <Image
             source={{ 
@@ -123,7 +97,18 @@ export const BookingCard = ({ booking, onPress, onCancel, onViewDetails }: Booki
             </Text>
           </View>
         </View>
-      )}
+      ) : booking.vehicle ? (
+        <View style={styles.vehicleInfoNoImage}>
+          <View style={styles.vehicleDetailsFull}>
+            <Text style={styles.vehicleName}>
+              {booking.vehicle.make} {booking.vehicle.model}
+            </Text>
+            <Text style={styles.vehicleModel}>
+              Year {booking.vehicle.model_year || 'N/A'}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       {/* Dates Section */}
       <View style={styles.datesSection}>
@@ -178,23 +163,6 @@ export const BookingCard = ({ booking, onPress, onCancel, onViewDetails }: Booki
             Details
           </Text>
         </TouchableOpacity>
-
-        {canCancel && (
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.dangerAction]}
-            onPress={handleCancel}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name="close-circle-outline" 
-              size={18} 
-              color={theme.colors.error} 
-            />
-            <Text style={[styles.actionText, styles.dangerActionText]}>
-              Cancel
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Cancel Reason (if cancelled) */}

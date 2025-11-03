@@ -20,7 +20,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { theme } from '@/src/theme';
-import { SwipeableTabs } from '@/src/components';
 import { useAuth } from '@/src/contexts/AuthContext';
 import KycService from '@/src/api/kyc.api';
 import UserService from '@/src/api/user.api';
@@ -399,15 +398,14 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SwipeableTabs>
-      <ScrollView 
-        style={styles.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-      {/* Header with back button and menu */}
-      <View style={styles.topBar}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+    {/* Header with back button and menu */}
+    <View style={styles.topBar}>
         <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
@@ -834,15 +832,12 @@ export default function ProfileScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
         </View>
-      </Modal>
-    </ScrollView>
-    </SwipeableTabs>
+      </View>
+    </Modal>
+  </ScrollView>
   );
-}
-
-const styles = StyleSheet.create({
+}const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.default,
@@ -1245,16 +1240,19 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: theme.colors.background.dark,
+    justifyContent: 'space-between',
   },
   modalButton: {
-    flex: 1,
+    width: '48%',
     paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalCancelButton: {
-    backgroundColor: theme.colors.background.dark,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: theme.colors.border.main || theme.colors.background.dark,
   },
   modalCancelButtonText: {
     fontSize: 15,

@@ -11,8 +11,6 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
-  Alert,
-  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -48,7 +46,6 @@ export default function BookingDetailsScreen() {
   const [booking, setBooking] = useState<BookingWithVehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [cancelling, setCancelling] = useState(false);
 
   // Load booking details
   useEffect(() => {
@@ -97,51 +94,6 @@ export default function BookingDetailsScreen() {
       return dateString;
     }
   };
-
-  // Handle cancel booking
-  const handleCancelBooking = async () => {
-    if (!booking?._id) return;
-
-    Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking?',
-      [
-        {
-          text: 'No',
-          style: 'cancel',
-        },
-        {
-          text: 'Cancel Booking',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setCancelling(true);
-              await BookingService.cancelBooking(booking._id!);
-              Alert.alert('Success', 'Booking cancelled successfully', [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    // Reload booking details
-                    loadBookingDetails();
-                  },
-                },
-              ]);
-            } catch (err: any) {
-              console.error('Cancel booking error:', err);
-              Alert.alert('Error', err?.message || 'Unable to cancel booking');
-            } finally {
-              setCancelling(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  // Check if booking can be cancelled
-  const canCancel = booking?.status === BookingStatus.PENDING_VERIFICATION ||
-                     (booking?.status === BookingStatus.VERIFIED &&
-                      booking?.verification_status === VerificationStatus.PENDING);
 
   // Loading state
   if (loading) {
@@ -231,11 +183,6 @@ export default function BookingDetailsScreen() {
             </View>
 
             <View style={styles.vehicleCard}>
-              <Image
-                source={{ uri: booking.vehicle.img_url || 'https://via.placeholder.com/120' }}
-                style={styles.vehicleImage}
-                resizeMode="cover"
-              />
               <View style={styles.vehicleInfo}>
                 <Text style={styles.vehicleName}>
                   {booking.vehicle.make} {booking.vehicle.model}
@@ -408,31 +355,6 @@ export default function BookingDetailsScreen() {
             )}
           </View>
         </View>
-
-        {/* Action Buttons */}
-        {canCancel && (
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.cancelButton]}
-              onPress={handleCancelBooking}
-              disabled={cancelling}
-              activeOpacity={0.7}
-            >
-              {cancelling ? (
-                <ActivityIndicator size="small" color={theme.colors.text.inverse} />
-              ) : (
-                <>
-                  <Ionicons
-                    name="close-circle-outline"
-                    size={20}
-                    color={theme.colors.text.inverse}
-                  />
-                  <Text style={styles.cancelButtonText}>Cancel Booking</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>

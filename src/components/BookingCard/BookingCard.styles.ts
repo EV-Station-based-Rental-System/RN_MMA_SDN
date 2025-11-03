@@ -62,6 +62,19 @@ export const styles = StyleSheet.create({
     fontSize: theme.fontSizes.sm,
     color: theme.colors.text.secondary,
   },
+  // No-image layout (compact)
+  vehicleInfoNoImage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  vehicleDetailsFull: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   
   // Dates section
   datesSection: {
