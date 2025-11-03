@@ -31,7 +31,7 @@ export default function PaymentSuccessScreen() {
   const depositAmount = params.depositAmount as string;
   const totalAmount = params.totalAmount as string;
   const paymentMethod = params.paymentMethod as string;
-  
+
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const [opening, setOpening] = useState(false);
@@ -51,7 +51,7 @@ export default function PaymentSuccessScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenPayment = async () => {
@@ -67,7 +67,7 @@ export default function PaymentSuccessScreen() {
         showTitle: true,
         enableBarCollapsing: false,
       });
-      
+
       // Handle browser dismissal
       if (result.type === 'cancel' || result.type === 'dismiss') {
         Alert.alert(
@@ -76,7 +76,7 @@ export default function PaymentSuccessScreen() {
           [
             { text: 'Not Now', style: 'cancel' },
             { text: 'Try Again', onPress: handleOpenPayment },
-          ]
+          ],
         );
       }
     } catch (error) {
@@ -117,22 +117,40 @@ export default function PaymentSuccessScreen() {
             ]}
           >
             <View style={[styles.successIcon, statusType === 'pending' && styles.pendingIcon]}>
-              <Ionicons 
-                name={statusType === 'pending' ? 'time-outline' : 'checkmark'} 
-                size={48} 
-                color="#FFFFFF" 
+              <Ionicons
+                name={statusType === 'pending' ? 'time-outline' : 'checkmark'}
+                size={48}
+                color="#FFFFFF"
               />
             </View>
             {/* Animated circles */}
-            <View style={[styles.animatedCircle, styles.circle1, statusType === 'pending' && styles.pendingCircle]} />
-            <View style={[styles.animatedCircle, styles.circle2, statusType === 'pending' && styles.pendingCircle]} />
-            <View style={[styles.animatedCircle, styles.circle3, statusType === 'pending' && styles.pendingCircle]} />
+            <View
+              style={[
+                styles.animatedCircle,
+                styles.circle1,
+                statusType === 'pending' && styles.pendingCircle,
+              ]}
+            />
+            <View
+              style={[
+                styles.animatedCircle,
+                styles.circle2,
+                statusType === 'pending' && styles.pendingCircle,
+              ]}
+            />
+            <View
+              style={[
+                styles.animatedCircle,
+                styles.circle3,
+                statusType === 'pending' && styles.pendingCircle,
+              ]}
+            />
           </Animated.View>
         </View>
 
         <Text style={styles.successTitle}>{message}</Text>
         <Text style={styles.successSubtitle}>
-          {statusType === 'pending' 
+          {statusType === 'pending'
             ? paymentMethod === 'bank_transfer'
               ? 'Complete your payment, then wait for staff verification before pickup'
               : 'Your booking is pending staff verification. Please wait for confirmation before pickup'
@@ -165,7 +183,8 @@ export default function PaymentSuccessScreen() {
             <View style={styles.paymentUrlTextContainer}>
               <Text style={styles.paymentUrlTitle}>Complete Payment</Text>
               <Text style={styles.paymentUrlText}>
-                Tap &ldquo;Proceed to Payment&rdquo; below to complete your bank transfer payment securely
+                Tap &ldquo;Proceed to Payment&rdquo; below to complete your bank transfer payment
+                securely
               </Text>
             </View>
           </View>
@@ -186,7 +205,16 @@ export default function PaymentSuccessScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Rental Period</Text>
               <Text style={styles.infoValue}>
-                {new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {new Date(startDate).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })}{' '}
+                -{' '}
+                {new Date(endDate).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
               </Text>
             </View>
           )}
@@ -208,7 +236,12 @@ export default function PaymentSuccessScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Booking Date</Text>
             <Text style={styles.infoValue}>
-              {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} - {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+              {new Date().toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}{' '}
+              - {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </View>
 
@@ -222,7 +255,9 @@ export default function PaymentSuccessScreen() {
           {depositAmount && (
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Deposit</Text>
-              <Text style={styles.infoValue}>{parseFloat(depositAmount).toLocaleString('vi-VN')}₫</Text>
+              <Text style={styles.infoValue}>
+                {parseFloat(depositAmount).toLocaleString('vi-VN')}₫
+              </Text>
             </View>
           )}
 
@@ -231,7 +266,9 @@ export default function PaymentSuccessScreen() {
           {totalAmount && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total Amount</Text>
-              <Text style={styles.totalValue}>{parseFloat(totalAmount).toLocaleString('vi-VN')}₫</Text>
+              <Text style={styles.totalValue}>
+                {parseFloat(totalAmount).toLocaleString('vi-VN')}₫
+              </Text>
             </View>
           )}
         </View>

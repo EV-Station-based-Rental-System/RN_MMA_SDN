@@ -15,6 +15,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useState, useEffect } from 'react';
+import * as Google from 'expo-auth-session/providers/google';
+import { AuthService } from '@/src/api';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/theme';
 import { StatusBar } from 'expo-status-bar';
@@ -24,7 +26,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, isLoading, isAuthenticated } = useAuth();
+  const { login, isLoading, isAuthenticated, setToken } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -79,6 +81,37 @@ export default function LoginScreen() {
   const handleForgotPassword = () => {
     router.push('/(auth)/forgot-password');
   };
+
+  // --- Google Auth Setup ---
+  // Replace these client IDs with your actual Google OAuth client IDs.
+  // For Expo dev, use the `expoClientId` / `webClientId` as appropriate.
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    expoClientId: process.env.EXPO_GOOGLE_CLIENT_ID || '<EXPO_GOOGLE_CLIENT_ID>',
+    iosClientId: process.env.IOS_GOOGLE_CLIENT_ID || '<IOS_GOOGLE_CLIENT_ID>',
+    androidClientId: process.env.ANDROID_GOOGLE_CLIENT_ID || '<ANDROID_GOOGLE_CLIENT_ID>',
+    webClientId: process.env.WEB_GOOGLE_CLIENT_ID || '<WEB_GOOGLE_CLIENT_ID>',
+    scopes: ['profile', 'email'],
+    responseType: 'id_token',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const id_token = (response.params as any)?.id_token;
+      if (id_token) {
+        (async () => {
+          try {
+            const token = await AuthService.googleLogin({ id_token });
+            if (typeof setToken === 'function') {
+              await setToken(token);
+            }
+          } catch (err: any) {
+            Alert.alert('Google Sign-In failed', err?.response?.data?.message || err?.message || 'Unable to sign in with Google');
+          }
+        })();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [response]);
 
   return (
     <KeyboardAvoidingView
@@ -184,14 +217,28 @@ export default function LoginScreen() {
             <Text style={styles.socialButtonText}>Continue with Apple</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.socialButton}>
+          <TouchableOpacity
+            style={styles.socialButton}
+            onPress={() => {
+              // Trigger Google OAuth prompt
+              try {
+                // promptAsync may be undefined if request is not ready
+                // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                promptAsync();
+              } catch (err) {
+                console.error('Failed to start Google auth:', err);
+                Alert.alert('Google Sign-In', 'Unable to start Google sign-in.');
+              }
+            }}
+            disabled={!request}
+          >
             <Ionicons name="logo-google" size={24} color={theme.colors.text.primary} />
             <Text style={styles.socialButtonText}>Continue with Google</Text>
           </TouchableOpacity>
 
           {/* Sign Up Link */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
+            <Text style={styles.footerText}>Don\u2019t have an account? </Text>
             <TouchableOpacity onPress={handleSignUp}>
               <Text style={styles.footerLink}>Sign Up.</Text>
             </TouchableOpacity>
