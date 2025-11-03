@@ -8,6 +8,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -31,6 +32,7 @@ export default function CarDetailsScreen() {
   const [vehicle, setVehicle] = useState<VehicleWithId | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   const loadVehicleDetails = async () => {
     try {
@@ -100,10 +102,37 @@ export default function CarDetailsScreen() {
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Car Details</Text>
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity
+          style={styles.moreButton}
+          activeOpacity={0.8}
+          onPress={() => setShowQuickActions((prev) => !prev)}
+        >
           <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
+
+      {showQuickActions && (
+        <View pointerEvents="box-none" style={styles.quickActionsOverlay}>
+          <Pressable style={styles.quickActionsBackdrop} onPress={() => setShowQuickActions(false)} />
+          <View style={styles.quickActionsContainer}>
+            <TouchableOpacity
+              style={styles.quickActionItem}
+              activeOpacity={0.85}
+              onPress={() => {
+                setShowQuickActions(false);
+                router.push('/');
+              }}
+            >
+              <Ionicons name="home" size={18} color={theme.colors.text.primary} />
+              <View style={styles.quickActionTextContainer}>
+                <Text style={styles.quickActionTitle}>Go to homepage</Text>
+                <Text style={styles.quickActionSubtitle}>Jump back to your main dashboard</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={16} color={theme.colors.text.secondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Car Images */}
@@ -340,6 +369,51 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'flex-end',
+  },
+  quickActionsOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 25,
+  },
+  quickActionsBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  quickActionsContainer: {
+    position: 'absolute',
+    top: theme.spacing['2xl'] + theme.spacing.md + 8,
+    right: theme.spacing.lg,
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    minWidth: 220,
+    ...theme.shadows.lg,
+  },
+  quickActionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  quickActionTextContainer: {
+    flex: 1,
+    marginLeft: theme.spacing.sm,
+  },
+  quickActionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  quickActionSubtitle: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,

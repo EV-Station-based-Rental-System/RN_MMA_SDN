@@ -151,6 +151,39 @@ class AuthService {
       throw error;
     }
   }
+
+  /**
+   * Google social login - exchange id_token for application JWT
+   */
+  async googleLogin(data: { id_token: string }): Promise<any> {
+    try {
+      const resp = await ApiClient.post(`/auth/google`, data);
+      console.log('🔐 Google login response:', resp);
+
+      const token = resp?.accessToken || resp?.access_token || resp?.token || resp?.data?.accessToken || resp?.data?.access_token || resp;
+      console.log('🔑 Extracted token (google):', token ? `${String(token).substring(0, 30)}...` : 'null');
+
+      if (token && typeof token === 'string') {
+        await StorageService.setAccessToken(token);
+        console.log('✅ Token saved to storage (google)');
+        return token;
+      }
+
+      if (resp && typeof resp === 'object') {
+        const tokenField = resp.accessToken || resp.access_token;
+        if (tokenField && typeof tokenField === 'string') {
+          await StorageService.setAccessToken(tokenField);
+          console.log('✅ Token saved to storage (from object - google)');
+          return tokenField;
+        }
+      }
+
+      return resp;
+    } catch (error) {
+      console.error('googleLogin error:', error);
+      throw error;
+    }
+  }
 }
 
 export default new AuthService();

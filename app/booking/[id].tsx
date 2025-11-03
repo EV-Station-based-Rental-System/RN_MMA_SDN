@@ -18,7 +18,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from '@/src/theme';
-import { CustomButton } from '@/src/components';
 import VehicleService from '@/src/api/vehicle.api';
 import BookingService from '@/src/api/booking.api';
 import { PaymentMethod } from '@/src/types/api.types';
@@ -137,7 +136,7 @@ export default function BookingTimeSelectionScreen() {
       console.warn('📤 Creating booking with data:', JSON.stringify(bookingData, null, 2));
 
       const resp = await BookingService.createBooking(bookingData as any);
-      
+
       // Bank Transfer: Has payUrl, needs payment then staff verification
       if (resp?.data?.payUrl && paymentMethod === PaymentMethod.BANK_TRANSFER) {
         router.push({
@@ -155,7 +154,7 @@ export default function BookingTimeSelectionScreen() {
             paymentMethod: paymentMethod,
           },
         });
-      } 
+      }
       // Cash Payment: No payUrl, needs staff verification at pickup
       else if (paymentMethod === PaymentMethod.CASH) {
         router.push({
@@ -182,7 +181,7 @@ export default function BookingTimeSelectionScreen() {
       console.error('❌ Create booking error:', error);
       console.error('❌ Error response:', error?.response);
       console.error('❌ Error response data:', JSON.stringify(error?.response?.data, null, 2));
-      
+
       const msg = error?.response?.data?.message || error?.message || 'Failed to create booking';
       alert(`Booking Error: ${msg}`);
     } finally {
@@ -256,6 +255,14 @@ export default function BookingTimeSelectionScreen() {
   const rentalFee = calculatePrice();
   const depositAmount = (vehicle as any)?.deposit_amount || vehicle?.pricing?.deposit_amount || 0;
   const totalAmount = rentalFee + depositAmount;
+  const isDailyRental = hours >= 24;
+  const totalDays = isDailyRental ? Math.ceil(hours / 24) : 0;
+  const durationDisplay = isDailyRental
+    ? `${totalDays} day${totalDays > 1 ? 's' : ''}`
+    : `${hours} hour${hours !== 1 ? 's' : ''}`;
+  const rateDisplay = isDailyRental
+    ? `${((vehicle as any)?.price_per_day || 0).toLocaleString('vi-VN')}₫/day`
+    : `${((vehicle as any)?.price_per_hour || 0).toLocaleString('vi-VN')}₫/h`;
 
   return (
     <View style={styles.container}>
@@ -380,80 +387,70 @@ export default function BookingTimeSelectionScreen() {
         {/* Pricing Summary */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pricing Summary</Text>
-          <View style={styles.durationCard}>
-            <View style={styles.durationRow}>
-              <Text style={styles.durationLabel}>Duration</Text>
-              <Text style={styles.durationValue}>
-                {hours >= 24
-                  ? `${Math.ceil(hours / 24)} day${Math.ceil(hours / 24) > 1 ? 's' : ''}`
-                  : `${hours} hour${hours !== 1 ? 's' : ''}`}
+          <View style={styles.pricingCard}>
+            <View style={styles.pricingHeader}>
+              <View>
+                <Text style={styles.pricingTitle}>Total due today</Text>
+                <Text style={styles.pricingAmount}>{totalAmount.toLocaleString('vi-VN')}₫</Text>
+              </View>
+              <View style={styles.pricingBadge}>
+                <Ionicons name="shield-checkmark" size={16} color={theme.colors.primary.main} />
+                <Text style={styles.pricingBadgeText}>Includes deposit</Text>
+              </View>
+            </View>
+
+            <View style={styles.pricingDivider} />
+
+            <View style={styles.pricingBreakdown}>
+              <View style={styles.pricingRow}>
+                <View style={styles.pricingLabelGroup}>
+                  <Ionicons name="time-outline" size={18} color={theme.colors.text.secondary} />
+                  <Text style={styles.pricingLabel}>Rental duration</Text>
+                </View>
+                <Text style={styles.pricingValue}>{durationDisplay}</Text>
+              </View>
+
+              <View style={styles.pricingRow}>
+                <View style={styles.pricingLabelGroup}>
+                  <Ionicons name="pricetag-outline" size={18} color={theme.colors.text.secondary} />
+                  <Text style={styles.pricingLabel}>
+                    {isDailyRental ? 'Daily rate' : 'Hourly rate'}
+                  </Text>
+                </View>
+                <Text style={styles.pricingValue}>{rateDisplay}</Text>
+              </View>
+
+              <View style={styles.pricingRow}>
+                <View style={styles.pricingLabelGroup}>
+                  <Ionicons name="car-outline" size={18} color={theme.colors.text.secondary} />
+                  <Text style={styles.pricingLabel}>Rental fee</Text>
+                </View>
+                <Text style={styles.pricingValue}>{rentalFee.toLocaleString('vi-VN')}₫</Text>
+              </View>
+
+              <View style={[styles.pricingRow, styles.pricingRowHighlight]}>
+                <View style={styles.pricingLabelGroup}>
+                  <Ionicons name="wallet-outline" size={18} color={theme.colors.primary.main} />
+                  <Text style={[styles.pricingLabel, styles.pricingLabelHighlight]}>
+                    Refundable deposit
+                  </Text>
+                </View>
+                <Text style={[styles.pricingValue, styles.pricingValueHighlight]}>
+                  {depositAmount.toLocaleString('vi-VN')}₫
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.pricingNote}>
+              <Ionicons name="information-circle" size={16} color={theme.colors.text.secondary} />
+              <Text style={styles.pricingNoteText}>
+                Deposit is refunded once the vehicle is returned in good condition.
               </Text>
-            </View>
-            <View style={styles.durationRow}>
-              <Text style={styles.durationLabel}>
-                {hours >= 24 ? 'Daily Rate' : 'Hourly Rate'}
-              </Text>
-              <Text style={styles.durationValue}>
-                {hours >= 24
-                  ? `${((vehicle as any)?.price_per_day || 0).toLocaleString('vi-VN')}₫/day`
-                  : `${((vehicle as any)?.price_per_hour || 0).toLocaleString('vi-VN')}₫/h`}
-              </Text>
-            </View>
-            <View style={styles.durationRow}>
-              <Text style={styles.durationLabel}>Rental Fee</Text>
-              <Text style={styles.durationValue}>{rentalFee.toLocaleString('vi-VN')}₫</Text>
-            </View>
-            <View style={styles.durationRow}>
-              <Text style={styles.durationLabel}>Deposit</Text>
-              <Text style={styles.durationValue}>{depositAmount.toLocaleString('vi-VN')}₫</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.durationRow}>
-              <Text style={styles.estimatedLabel}>Total Amount</Text>
-              <Text style={styles.estimatedPrice}>{totalAmount.toLocaleString('vi-VN')}₫</Text>
             </View>
           </View>
         </View>
 
-        {/* Payment Method */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          <View style={{ marginTop: theme.spacing.sm }}>
-            <TouchableOpacity
-              onPress={() => setPaymentMethod(PaymentMethod.BANK_TRANSFER)}
-              style={[
-                styles.dateTimeButton,
-                paymentMethod === PaymentMethod.BANK_TRANSFER && {
-                  borderColor: theme.colors.primary.main,
-                  borderWidth: 1,
-                },
-              ]}
-            >
-              <Text style={styles.dateTimeText}>🏦 Bank Transfer (MoMo / VNPay)</Text>
-              <Text style={[styles.dateTimeText, { fontSize: 12, color: theme.colors.text.secondary, marginTop: 4 }]}>
-                Pay online securely with mobile banking
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setPaymentMethod(PaymentMethod.CASH)}
-              style={[
-                styles.dateTimeButton,
-                paymentMethod === PaymentMethod.CASH && {
-                  borderColor: theme.colors.primary.main,
-                  borderWidth: 1,
-                },
-                { marginTop: theme.spacing.sm },
-              ]}
-            >
-              <Text style={styles.dateTimeText}>💵 Cash (Pay at pickup)</Text>
-              <Text style={[styles.dateTimeText, { fontSize: 12, color: theme.colors.text.secondary, marginTop: 4 }]}>
-                Pay when you pick up the vehicle
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ height: 100 }} />
-        </View>
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Date/Time Pickers */}
@@ -497,19 +494,93 @@ export default function BookingTimeSelectionScreen() {
 
       {/* Bottom Action */}
       <View style={styles.bottomBar}>
-        <View style={styles.bottomPriceContainer}>
-          <Text style={styles.bottomPriceLabel}>Total</Text>
-          <Text style={styles.bottomPrice}>
-            {totalAmount.toLocaleString('vi-VN')}₫
-          </Text>
+        <View style={styles.bottomSummary}>
+          <View style={styles.bottomSummaryHeader}>
+            <Text style={styles.bottomPriceLabel}>Total due today</Text>
+            <Text style={styles.bottomPrice}>{totalAmount.toLocaleString('vi-VN')}₫</Text>
+          </View>
         </View>
-        <CustomButton
-          title={submitting ? 'Processing...' : 'Proceed to Payment →'}
+
+        <View style={styles.bottomPaymentSection}>
+          <Text style={styles.bottomPaymentLabel}>Payment method</Text>
+          <View style={styles.bottomPaymentOptions}>
+            <TouchableOpacity
+              onPress={() => setPaymentMethod(PaymentMethod.BANK_TRANSFER)}
+              style={[
+                styles.bottomPaymentOption,
+                paymentMethod === PaymentMethod.BANK_TRANSFER && styles.bottomPaymentOptionSelected,
+              ]}
+              activeOpacity={0.85}
+            >
+              <Image
+                source={{
+                  uri: 'https://developers.momo.vn/v3/assets/images/icon-wthout-bgr-e4496e210dca9a7372ad1fe53d079e16.png',
+                }}
+                style={styles.bottomPaymentLogo}
+                resizeMode="contain"
+              />
+              <View style={styles.bottomPaymentDetails}>
+                <Text style={styles.bottomPaymentTitle}>MoMo</Text>
+                <Text style={styles.bottomPaymentSubtitle}>Online payment</Text>
+              </View>
+              {paymentMethod === PaymentMethod.BANK_TRANSFER && (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color={theme.colors.primary.main}
+                  style={styles.bottomPaymentCheck}
+                />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setPaymentMethod(PaymentMethod.CASH)}
+              style={[
+                styles.bottomPaymentOption,
+                paymentMethod === PaymentMethod.CASH && styles.bottomPaymentOptionSelected,
+              ]}
+              activeOpacity={0.85}
+            >
+              <View style={styles.bottomPaymentIconBubble}>
+                <Ionicons name="cash" size={18} color="#10B981" />
+              </View>
+              <View style={styles.bottomPaymentDetails}>
+                <Text style={styles.bottomPaymentTitle}>Cash</Text>
+                <Text style={styles.bottomPaymentSubtitle}>Pay on pickup</Text>
+              </View>
+              {paymentMethod === PaymentMethod.CASH && (
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color={theme.colors.primary.main}
+                  style={styles.bottomPaymentCheck}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.checkoutButton, submitting && styles.checkoutButtonDisabled]}
           onPress={handleCreateBooking}
-          style={styles.continueButton}
-          loading={submitting}
+          activeOpacity={0.85}
           disabled={submitting}
-        />
+        >
+          <View style={styles.checkoutButtonContent}>
+            <View>
+              <Text style={styles.checkoutButtonText}>
+                {submitting ? 'Processing payment…' : 'Proceed to payment'}
+              </Text>
+            </View>
+            <View style={styles.checkoutButtonIcon}>
+              {submitting ? (
+                <ActivityIndicator color={theme.colors.text.inverse} />
+              ) : (
+                <Ionicons name="arrow-forward" size={20} color={theme.colors.text.inverse} />
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -644,66 +715,217 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: theme.colors.text.primary,
   },
-  durationCard: {
-    backgroundColor: theme.colors.primary.main,
-    marginHorizontal: theme.spacing.lg,
-    marginTop: theme.spacing.lg,
+  pricingCard: {
+    backgroundColor: theme.colors.background.paper,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  durationRow: {
+  pricingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: theme.spacing.md,
+  },
+  pricingTitle: {
+    fontSize: 13,
+    color: theme.colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  pricingAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: theme.colors.text.primary,
+  },
+  pricingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECF8FF',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.full,
+    gap: 6,
+  },
+  pricingBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: theme.colors.primary.main,
+  },
+  pricingDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border.light,
+    marginVertical: theme.spacing.md,
+  },
+  pricingBreakdown: {
+    gap: theme.spacing.sm,
+  },
+  pricingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  durationLabel: {
-    fontSize: 14,
-    color: theme.colors.text.inverse,
-  },
-  durationValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: theme.colors.text.inverse,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginVertical: theme.spacing.sm,
-  },
-  estimatedLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.inverse,
-  },
-  estimatedPrice: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.text.inverse,
-  },
-  bottomBar: {
+  pricingLabelGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  pricingLabel: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+  },
+  pricingValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  pricingRowHighlight: {
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.sm,
+    backgroundColor: '#F8FBFF',
+  },
+  pricingLabelHighlight: {
+    color: theme.colors.primary.main,
+  },
+  pricingValueHighlight: {
+    color: theme.colors.primary.main,
+  },
+  pricingNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: theme.spacing.lg,
+  },
+  pricingNoteText: {
+    flex: 1,
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    lineHeight: 18,
+  },
+  bottomBar: {
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     backgroundColor: theme.colors.background.default,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border.light,
+    gap: theme.spacing.md,
   },
-  bottomPriceContainer: {
-    flex: 1,
+  bottomSummary: {
+    width: '100%',
+    gap: theme.spacing.xs,
+  },
+  bottomSummaryHeader: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 4,
   },
   bottomPriceLabel: {
     fontSize: 12,
     color: theme.colors.text.secondary,
     marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   bottomPrice: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: theme.colors.text.primary,
   },
-  continueButton: {
+  bottomPaymentSection: {
+    gap: theme.spacing.sm,
+  },
+  bottomPaymentLabel: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  bottomPaymentOptions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  bottomPaymentOption: {
     flex: 1,
-    marginLeft: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+  },
+  bottomPaymentOptionSelected: {
+    borderColor: theme.colors.primary.main,
+    backgroundColor: '#F0F9FF',
+  },
+  bottomPaymentLogo: {
+    width: 40,
+    height: 24,
+  },
+  bottomPaymentIconBubble: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomPaymentDetails: {
+    flex: 1,
+  },
+  bottomPaymentTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  bottomPaymentSubtitle: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+  },
+  bottomPaymentCheck: {
+    marginLeft: 'auto',
+  },
+  checkoutButton: {
+    backgroundColor: theme.colors.primary.main,
+    borderRadius: theme.borderRadius.xl,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 2,
+  },
+  checkoutButtonDisabled: {
+    opacity: 0.7,
+  },
+  checkoutButtonContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    borderRadius: theme.spacing.xl,
+  },
+  checkoutButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.text.inverse,
+  },
+  checkoutButtonIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
