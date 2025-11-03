@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
+  Pressable,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,6 +36,7 @@ export default function PaymentSuccessScreen() {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const [opening, setOpening] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   useEffect(() => {
     // Success animation
@@ -100,10 +102,37 @@ export default function PaymentSuccessScreen() {
           <Ionicons name="chevron-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Payment States</Text>
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity
+          style={styles.moreButton}
+          activeOpacity={0.8}
+          onPress={() => setShowQuickActions((prev) => !prev)}
+        >
           <Ionicons name="ellipsis-horizontal" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
+
+      {showQuickActions && (
+        <View pointerEvents="box-none" style={styles.quickActionsOverlay}>
+          <Pressable style={styles.quickActionsBackdrop} onPress={() => setShowQuickActions(false)} />
+          <View style={styles.quickActionsContainer}>
+            <TouchableOpacity
+              style={styles.quickActionItem}
+              activeOpacity={0.85}
+              onPress={() => {
+                setShowQuickActions(false);
+                router.push('/');
+              }}
+            >
+              <Ionicons name="home" size={18} color={theme.colors.text.primary} />
+              <View style={styles.quickActionTextContainer}>
+                <Text style={styles.quickActionTitle}>Go to homepage</Text>
+                <Text style={styles.quickActionSubtitle}>Jump back to your main dashboard</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={16} color={theme.colors.text.secondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Success Icon */}
@@ -272,19 +301,6 @@ export default function PaymentSuccessScreen() {
             </View>
           )}
         </View>
-
-        {/* Action Buttons */}
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="download-outline" size={20} color={theme.colors.text.primary} />
-          <Text style={styles.actionButtonText}>Download Receipt</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="share-social-outline" size={20} color={theme.colors.text.primary} />
-          <Text style={styles.actionButtonText}>Shar Your Receipt</Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Bottom Bar */}
@@ -567,5 +583,50 @@ const styles = StyleSheet.create({
     height: 56,
     marginTop: theme.spacing.sm,
     backgroundColor: theme.colors.background.paper,
+  },
+  quickActionsOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 25,
+  },
+  quickActionsBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  quickActionsContainer: {
+    position: 'absolute',
+    top: theme.spacing['2xl'] + theme.spacing.md + 8,
+    right: theme.spacing.lg,
+    backgroundColor: theme.colors.background.paper,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    minWidth: 220,
+    ...theme.shadows.lg,
+  },
+  quickActionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  quickActionTextContainer: {
+    flex: 1,
+    marginLeft: theme.spacing.sm,
+  },
+  quickActionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  quickActionSubtitle: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    marginTop: 2,
   },
 });
