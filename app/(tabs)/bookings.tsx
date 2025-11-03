@@ -13,14 +13,13 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useCallback } from 'react';
 import { theme } from '@/src/theme';
-import { SwipeableTabs, BookingCard } from '@/src/components';
+import { BookingCard } from '@/src/components';
 import BookingService from '@/src/api/booking.api';
 import { Booking, BookingStatus, VerificationStatus, BookingQueryParams } from '@/src/types/api.types';
 
@@ -141,18 +140,6 @@ export default function BookingsScreen() {
     setFilteredBookings(filtered);
   };
 
-  // Handle cancel booking
-  const handleCancelBooking = async (bookingId: string) => {
-    try {
-      await BookingService.cancelBooking(bookingId);
-      Alert.alert('Success', 'Booking cancelled successfully');
-      loadBookings(); // Reload list
-    } catch (err: any) {
-      console.error('Cancel booking error:', err);
-      Alert.alert('Error', err?.message || 'Unable to cancel booking');
-    }
-  };
-
   // Handle view details
   const handleViewDetails = (bookingId: string) => {
     // Navigate to booking details screen
@@ -247,12 +234,11 @@ export default function BookingsScreen() {
   );
 
   return (
-    <SwipeableTabs>
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background.default} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background.default} />
 
-        {/* Header */}
-        <View style={styles.header}>
+      {/* Header */}
+      <View style={styles.header}>
           <View style={styles.headerTop}>
             <Text style={styles.headerTitle}>My Bookings</Text>
             <TouchableOpacity
@@ -342,18 +328,15 @@ export default function BookingsScreen() {
               <BookingCard
                 key={booking._id}
                 booking={booking}
-                onCancel={handleCancelBooking}
+                showImage={false}
                 onViewDetails={handleViewDetails}
               />
-            ))}
-          </ScrollView>
-        )}
-      </View>
-    </SwipeableTabs>
+          ))}
+        </ScrollView>
+      )}
+    </View>
   );
-}
-
-const styles = StyleSheet.create({
+}const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.default,

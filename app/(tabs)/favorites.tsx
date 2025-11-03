@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { theme } from '@/src/theme';
-import { CarCard, SwipeableTabs } from '@/src/components';
+import { CarCard } from '@/src/components';
 import { useFavorites } from '@/src/contexts/FavoritesContext';
 import VehicleService from '@/src/api/vehicle.api';
 
@@ -178,10 +178,9 @@ export default function FavoritesScreen() {
   };
 
   return (
-    <SwipeableTabs>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>My Favorites</Text>
@@ -306,7 +305,7 @@ export default function FavoritesScreen() {
                     name={`${vehicle.make} ${vehicle.model}`}
                     rating={4.5}
                     location={vehicle.station?.name || 'Unknown'}
-                    price={vehicle.pricing?.price_per_hour || 0}
+                    price={(vehicle as any)?.price_per_hour || vehicle.pricing?.price_per_hour || 0}
                     seats={4}
                     imageUrl={vehicle.img_url || 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400'}
                     onPress={() => {
@@ -346,15 +345,12 @@ export default function FavoritesScreen() {
             ]}>
               Delete {selectedIds.length} {selectedIds.length === 1 ? 'item' : 'items'}
             </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-    </SwipeableTabs>
+        </TouchableOpacity>
+      </View>
+    )}
+  </View>
   );
-}
-
-const styles = StyleSheet.create({
+}const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.default,
